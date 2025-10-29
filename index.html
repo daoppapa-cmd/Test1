@@ -103,6 +103,17 @@
 
     </div> <!-- /end #app-container -->
 
+    <!-- 4. Modal/Message Box (Hidden by default) -->
+    <div id="message-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+            <h3 id="modal-title" class="text-lg font-bold mb-4"></h3>
+            <p id="modal-message" class="text-gray-700 mb-6"></p>
+            <button id="modal-close-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                បិទ
+            </button>
+        </div>
+    </div>
+
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -181,6 +192,12 @@
         const checkOutBtn = document.getElementById('check-out-btn');
         const historyList = document.getElementById('history-list');
 
+        // Modal Elements
+        const messageModal = document.getElementById('message-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
         // 7. Helper Function (សម្រាប់បង្ហាញ/លាក់ Screen)
         function showScreen(screenId) {
             loadingScreen.classList.add('hidden');
@@ -196,6 +213,27 @@
                 dashboardScreen.classList.remove('hidden');
                 dashboardScreen.classList.add('flex');
             }
+        }
+
+        // Helper function for Modal
+        function showModal(title, message) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            messageModal.classList.remove('hidden');
+        }
+
+        // Add event listener for modal close button
+        modalCloseBtn.addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+
+        // Helper function to get local YYYY-MM-DD
+        function getLocalISODate() {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
         }
 
         // 8. Main Function (ពេលបើកទំព័រ)
@@ -380,12 +418,12 @@
             // --- VALIDATION ថ្មី ---
             if (type === 'check-in' && hasCheckedInToday) {
                 console.warn("Already checked in today.");
-                // អ្នកអាចបន្ថែម Message Box នៅទីនេះ
+                showModal("បានស្កេនរួចហើយ", "អ្នកបានធ្វើការស្កេនចូលម្ដងរួចមកហើយសម្រាប់ថ្ងៃនេះ។");
                 return; // បញ្ឈប់ការដំណើរការ
             }
             if (type === 'check-out' && hasCheckedOutToday) {
                 console.warn("Already checked out today.");
-                // អ្នកអាចបន្ថែម Message Box នៅទីនេះ
+                showModal("បានស្កេនរួចហើយ", "អ្នកបានធ្វើការស្កេនចេញម្ដងរួចមកហើយសម្រាប់ថ្ងៃនេះ។");
                 return; // បញ្ឈប់ការដំណើរការ
             }
             // --- ចប់ VALIDATION ថ្មី ---
@@ -395,7 +433,7 @@
             checkOutBtn.disabled = true;
 
             const now = new Date();
-            const today = now.toISOString().split('T')[0]; // យកតែ 'YYYY-MM-DD'
+            const today = getLocalISODate(); // យកតែ 'YYYY-MM-DD' (Local Time)
 
             const record = {
                 employeeId: selectedEmployee.id,
@@ -416,7 +454,7 @@
             } catch (error) {
                 console.error("Error adding document: ", error);
             } finally {
-                // បើកប៊ូតុងវិញ
+                // បើកប៊ូតុងវិញ (ទោះបីជា onSnapshot នឹង update វាក៏ដោយ)
                 checkInBtn.disabled = false;
                 checkOutBtn.disabled = false;
             }
@@ -431,7 +469,7 @@
 
             if (!userId || !selectedEmployee) return;
 
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalISODate(); // (Local Time)
             
             // --- កែសម្រួល ---
             // ប្តូរទៅ Public Collection វិញ
@@ -542,5 +580,4 @@
     </script>
 </body>
 </html>
-
 
