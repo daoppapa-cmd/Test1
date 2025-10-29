@@ -415,7 +415,7 @@
                 return;
             }
 
-            // --- VALIDATION ថ្មី ---
+            // --- VALIDATION ---
             if (type === 'check-in' && hasCheckedInToday) {
                 console.warn("Already checked in today.");
                 showModal("បានស្កេនរួចហើយ", "អ្នកបានធ្វើការស្កេនចូលម្ដងរួចមកហើយសម្រាប់ថ្ងៃនេះ។");
@@ -426,9 +426,8 @@
                 showModal("បានស្កេនរួចហើយ", "អ្នកបានធ្វើការស្កេនចេញម្ដងរួចមកហើយសម្រាប់ថ្ងៃនេះ។");
                 return; // បញ្ឈប់ការដំណើរការ
             }
-            // --- ចប់ VALIDATION ថ្មី ---
 
-            // បិទប៊ូតុងបណ្ដោះអាសន្ន (នឹងត្រូវបានបើក/បិទ ដោយ onSnapshot)
+            // បិទប៊ូតុងបណ្ដោះអាសន្ន
             checkInBtn.disabled = true;
             checkOutBtn.disabled = true;
 
@@ -444,19 +443,15 @@
             };
 
             try {
-                // រក្សាទុកក្នុង Private Collection របស់ User
-                // --- កែសម្រួល ---
-                // ប្តូរពី Private Collection (users/{userId}) ទៅ Public Collection
-                // ដើម្បីឱ្យទិន្នន័យតាមគណនីបុគ្គលិក (employeeId) មិនមែនតាមឧបករណ៍ (userId)
+                // រក្សាទុកក្នុង Public Collection
                 const collectionPath = `artifacts/${appId}/public/data/employee_check_ins`;
                 const docRef = await addDoc(collection(db, collectionPath), record);
                 console.log("Document written with ID: ", docRef.id);
             } catch (error) {
                 console.error("Error adding document: ", error);
             } finally {
-                // បើកប៊ូតុងវិញ (ទោះបីជា onSnapshot នឹង update វាក៏ដោយ)
-                checkInBtn.disabled = false;
-                checkOutBtn.disabled = false;
+                // បើកប៊ូតុងវិញ (onSnapshot នឹង update វាម្តងទៀត តែនេះជាការធានា)
+                updateButtonStates();
             }
         }
 
@@ -469,33 +464,32 @@
 
             if (!userId || !selectedEmployee) return;
 
-            const today = getLocalISODate(); // (Local Time)
+            // --- ការកែសម្រួលចុងក្រោយ ---
+            // 'today' ត្រូវបានផ្លាស់ទីទៅក្នុង onSnapshot 
             
-            // --- កែសម្រួល ---
-            // ប្តូរទៅ Public Collection វិញ
             const collectionPath = `artifacts/${appId}/public/data/employee_check_ins`;
 
-            // បង្កើត Query
-            // --- កែសម្រួល ---
-            // ត្រូវតែ Query តាម employeeId ដើម្បីកុំឱ្យទាញទិន្នន័យបុគ្គលិកផ្សេងទៀត
-            // ពេលប្រើ Public Collection
+            // Query យកតែទិន្នន័យរបស់ Employee ដែលបានជ្រើសរើស
             const q = query(collection(db, collectionPath), where("employeeId", "==", selectedEmployee.id));
 
             unsubscribeHistory = onSnapshot(q, (snapshot) => {
+                
+                // *** ការកែសម្រួលសំខាន់ ***
+                // គណនា 'today' ឡើងវិញ រាល់ពេល onSnapshot ដំណើរការ
+                // នេះធានាថាគ្រប់ឧបករណ៍ទាំងអស់ ប្រើ "ថ្ងៃ" ដូចគ្នា
+                const today = getLocalISODate(); 
+                
                 const allRecords = [];
                 snapshot.forEach((doc) => {
                     allRecords.push(doc.data());
                 });
 
-                // Filter យកតែថ្ងៃនេះ និង Employee ដែលបានជ្រើសរើស
-                // --- កែសម្រួល ---
-                // ឥឡូវ Query បាន Filter យក employeeId រួចហើយ (ពី where)
-                // យើងគ្រាន់តែ Filter យកថ្ងៃនេះ (day) នៅក្នុង JavaScript
+                // Filter យកតែថ្ងៃនេះ (ដោយប្រើ 'today' ដែលទើបគណនា)
                 const todayRecords = allRecords
                     .filter(r => r.day === today)
-                    .sort((a, b) => a.timestamp.seconds - b.timestamp.seconds); // សម្គាល់: ត្រូវប្រាកដថា sort ត្រូវ
+                    .sort((a, b) => a.timestamp.seconds - b.timestamp.seconds); 
                 
-                // --- LOGIC ថ្មី សម្រាប់ត្រួតពិនិត្យស្ថានភាព ---
+                // --- LOGIC សម្រាប់ត្រួតពិនិត្យស្ថានភាព ---
                 // Reset flags ជាមុនសិន
                 hasCheckedInToday = false;
                 hasCheckedOutToday = false;
@@ -509,7 +503,6 @@
                         hasCheckedOutToday = true;
                     }
                 }
-                // --- ចប់ LOGIC ថ្មី ---
 
                 renderHistory(todayRecords);
                 updateButtonStates(); // ធ្វើបច្ចុប្បន្នភាពប៊ូតុង បន្ទាប់ពីពិនិត្យស្ថានភាព
