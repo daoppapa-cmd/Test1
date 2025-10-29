@@ -503,26 +503,37 @@
             if (!userId || !selectedEmployee) return;
 
             // --- ការកែសម្រួលសម្រាប់ Performance ---
-            const today = getLocalISODate(); 
+            // const today = getLocalISODate(); // (*** ត្រូវដកចេញពីទីនេះ ***)
             const collectionPath = `artifacts/${appId}/public/data/employee_check_ins`;
 
             // 2. បង្កើត Query ឱ្យលឿន ដោយ Filter ទាំង employeeId និង day នៅក្នុង Database
             // នេះទាមទារ Index នៅក្នុង Firestore
-            console.log(`Setting up listener for employeeId: ${selectedEmployee.id} and day: ${today}`);
+            // console.log(`Setting up listener for employeeId: ${selectedEmployee.id} and day: ${today}`);
+            // (*** កែសម្រួល Query ***)
+            // ដក where("day", "==", today) ចេញ ដើម្បីជួសជុលបញ្ហា Sync
+            // និងដើម្បីមិនឱ្យទាមទារ Composite Index
+            console.log(`Setting up listener for employeeId: ${selectedEmployee.id}`);
             const q = query(
                 collection(db, collectionPath), 
-                where("employeeId", "==", selectedEmployee.id),
-                where("day", "==", today) // *** Filter នៅក្នុង Database ផ្ទាល់ ***
+                where("employeeId", "==", selectedEmployee.id)
+                // where("day", "==", today) // *** ដកចេញ ***
             );
 
             unsubscribeHistory = onSnapshot(q, (snapshot) => {
                 
+                // (*** ត្រូវបន្ថែមនៅទីនេះ ***)
+                // គណនា "ថ្ងៃនេះ" (today) រាល់ពេលទិន្នន័យថ្មីចូល
+                const today = getLocalISODate();
+
                 const allRecords = [];
                 snapshot.forEach((doc) => {
                     allRecords.push(doc.data());
                 });
                 
+                // (*** កែសម្រួល Logic ***)
+                // Filter រកទិន្នន័យ "ថ្ងៃនេះ" នៅក្នុង JavaScript (Client-side)
                 const todayRecords = allRecords
+                    .filter(record => record.day === today) // *** បន្ថែម Filter ***
                     .sort((a, b) => a.timestamp.seconds - b.timestamp.seconds); 
                 
                 // --- LOGIC សម្រាប់ត្រួតពិនិត្យស្ថានភាព ---
@@ -543,12 +554,17 @@
 
             }, (error) => {
                 console.error("Error with history snapshot: ", error);
+                // (*** ដក Error ចាស់ចេញ ***)
+                // ដោយសារ Query ថ្មីមិនត្រូវការ Index, យើងមិនបាច់បង្ហាញ Error នេះទៀតទេ
+                /*
                 if (error.code === 'failed-precondition') {
                     historyList.innerHTML = `<p class="text-red-500 p-2 text-sm"><b>Error:</b> Query ត្រូវការ Index។ សូមពិនិត្យ Console (F12) ដើម្បីមើល Link បង្កើត Index នៅក្នុង Firebase។</p>`;
                     console.error("FIREBASE INDEXING ERROR: Please click the link in this error message to create the required Firestore index:", error.message);
                 } else {
                     historyList.innerHTML = `<p class="text-red-500">Error loading history.</p>`;
                 }
+                */
+                historyList.innerHTML = `<p class="text-red-500">Error loading history: ${error.message}</p>`;
             });
         }
 
@@ -623,5 +639,6 @@
     </script>
 </body>
 </html>
+
 
 
