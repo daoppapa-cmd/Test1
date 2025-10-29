@@ -288,8 +288,13 @@
                 auth = getAuth(app);
                 setLogLevel('debug'); // សម្រាប់ Debugging
                 
-                // យក App ID ពី environment
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                // FIX: យក App ID ចេញ, ព្រោះយើងលែងប្រើ path របស់ Canvas ហើយ
+                // appId = firebaseConfig.appId; 
+                // if (!appId) {
+                //     console.error("appId is missing from firebaseConfig.");
+                //     showMessage('បញ្ហាធ្ងន់ធ្ងរ', 'appId is missing from firebaseConfig.', true);
+                //     return;
+                // }
 
                 await setupAuthListener();
             } catch (error) {
@@ -313,11 +318,19 @@
                     } else {
                         // User is signed out, attempt to sign in
                         try {
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
+                            // FIX: Bypass custom token auth. Since we are hard-coding the firebaseConfig
+                            // for a specific project, we should not use the environment's custom token,
+                            // which may be for a different project.
+                            
+                            // if (initialAuthToken) {
+                            //     await signInWithCustomToken(auth, initialAuthToken);
+                            // } else {
+                            //     await signInAnonymously(auth);
+                            // }
+
+                            // Always sign in anonymously for this specific app setup.
+                            await signInAnonymously(auth);
+
                         } catch (error) {
                             console.error("Firebase Sign In Error:", error);
                             showMessage('បញ្ហា Sign In', `មិនអាច Sign In ទៅ Firebase បានទេ: ${error.message}`, true);
@@ -332,7 +345,7 @@
          * 3. ទាញទិន្នន័យពី Google Sheet
          */
         async function fetchGoogleSheetData() {
-            showLoading(true, 'កំពុងទាញបញ្ជីបុគ្គលិក...');
+            showLoading(true, 'កំពុងទាញបញ្ជីបុគ្gលិក...');
             try {
                 const response = await fetch(GVIZ_URL);
                 if (!response.ok) {
@@ -432,9 +445,15 @@
             // The security rules for /users/{userId} require auth.uid == userId,
             // but we are signing in anonymously, so auth.uid will not match the employee ID.
             // We will use the public path instead, which allows writes if auth != null.
-            const publicDataPath = `artifacts/${appId}/public/data/attendance/${firestoreUserId}/records`;
-            console.log("Using Firestore Path:", publicDataPath);
-            attendanceCollectionRef = collection(db, publicDataPath);
+            // const publicDataPath = `artifacts/${appId}/public/data/attendance/${firestoreUserId}/records`;
+            
+            // **** FIX 2: Use a simple root-level path ****
+            // The 'artifacts' path is specific to the Canvas environment.
+            // Since we are using a custom Firebase project, we should use a simpler path.
+            const simpleDataPath = `attendance/${firestoreUserId}/records`;
+
+            console.log("Using Firestore Path:", simpleDataPath);
+            attendanceCollectionRef = collection(db, simpleDataPath);
 
             // បំពេញព័ត៌មាន Profile
             welcomeMessage.textContent = `សូមស្វាគមន៍, ${employee.name.split(' ')[0]}`;
