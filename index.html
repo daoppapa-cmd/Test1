@@ -552,22 +552,43 @@
                 console.error("Error with history snapshot: ", error);
                 
                 // (*** កែសម្រួល Error ឱ្យច្បាស់ ***)
-                // ផ្ដល់ការណែនាំច្បាស់លាស់ ជំនួស Link ដែល Error
+                // ផ្ដល់ការណែនាំច្បាស់លាស់ និង Link ស្វ័យប្រវត្តិ
                 if (error.code === 'failed-precondition') {
+                    
+                    // --- (ការកែប្រែ) បង្កើត Link ស្វ័យប្រវត្តិ ---
+                    const projectId = finalFirebaseConfig.projectId;
+                    // ត្រូវប្រាកដថា collectionId នេះ ដូចគ្នានឹង collectionPath ដែរ
+                    // ដោយសារ collectionPath មាន appId, យើងត្រូវដកវាចេញ
+                    const collectionIdOnly = "employee_check_ins";
+                    const field1 = 'employeeId';
+                    const field2 = 'day';
+                    
+                    const indexCreationUrl = `https://console.firebase.google.com/project/${projectId}/firestore/indexes/composite/add?collectionId=${collectionIdOnly}&field_path_0=${field1}&field_order_0=ASCENDING&field_path_1=${field2}&field_order_1=ASCENDING`;
+                    // --- បញ្ចប់ការកែប្រែ ---
+
                     const errorHtml = `
                         <div class="text-left p-2 text-sm text-red-800 bg-red-100 rounded-lg">
                             <p class="font-bold">Error: ត្រូវការបង្កើត Index ក្នុង Firebase</p>
-                            <p class="mt-2">សូមចូលទៅកាន់ Firebase Project របស់អ្នក៖</p>
-                            <ol class="list-decimal list-inside mt-1 pl-2">
+                            
+                            <!-- (ការកែប្រែ) បន្ថែមប៊ូតុង Link -->
+                            <p class="mt-3 mb-3">
+                                <a href="${indexCreationUrl}" target="_blank" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                    ចុចទីនេះដើម្បីបង្កើត Index ដោយស្វ័យប្រវត្តិ
+                                </a>
+                            </p>
+                            <!-- បញ្ចប់ការកែប្រែ -->
+
+                            <p class="mt-2">បន្ទាប់ពីចុច Link ហើយ សូមរង់ចាំ Index នោះ "Enable" (2-3 នាទី) រួច Reload កម្មវិធីនេះ។</p>
+                            
+                            <hr class="my-3">
+                            <p class="mt-2 text-xs">ឬ បង្កើតដោយខ្លួនឯង (Manually):</p>
+                            <ol class="list-decimal list-inside mt-1 pl-2 text-xs">
                                 <li>Cloud Firestore -> Indexes</li>
-                                <li>ចុច "Start query" (ឬ Add composite index)</li>
                                 <li>Collection ID: <strong>employee_check_ins</strong></li>
                                 <li>Field 1: <strong>employeeId</strong> (Ascending)</li>
                                 <li>Field 2: <strong>day</strong> (Ascending)</li>
                                 <li>Scope: <strong>Collection</strong></li>
-                                <li>ចុច "Create Index" (រង់ចាំ 2-3 នាទី)</li>
                             </ol>
-                            <p class="mt-2">បន្ទាប់មករក Reload កម្មវិធីនេះ។</p>
                         </div>
                     `;
                     historyList.innerHTML = errorHtml;
@@ -649,7 +670,4 @@
     </script>
 </body>
 </html>
-
-
-
 
