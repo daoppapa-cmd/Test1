@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ប្រព័ន្ធគ្រប់គ្រងវត្តមាន</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* រចនាប័ទ្មសម្រាប់ Font ខ្មែរ */
+        @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Kantumruy Pro', sans-serif;
+            -webkit-tap-highlight-color: transparent; /* បំបាត់ការប្លីកពេលចុចលើទូរស័ព្ទ */
+        }
+        /* បង្ហាញ/លាក់អេក្រង់ */
+        .hidden {
+            display: none;
+        }
+        /* សម្រាប់ Modal */
+        #message-modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #message-modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #message-modal {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg">
+
+        <!-- 1. អេក្រង់ Loading -->
+        <div id="loading-screen" class="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+            <svg class="animate-spin h-12 w-12 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <h2 class="text-xl font-semibold text-gray-700">កំពុងទាញយកទិន្នន័យ...</h2>
+            <p class="text-gray-500">សូមមេត្តារង់ចាំបន្តិច</p>
+        </div>
+
+        <!-- 2. អេក្រង់ជ្រើសរើសបុគ្គលិក -->
+        <div id="select-screen" class="hidden p-4">
+            <h1 class="text-2xl font-bold text-center text-blue-700 mb-4">ជ្រើសរើសគណនីរបស់អ្នក</h1>
+            <div class="mb-4">
+                <input type="text" id="search-input" placeholder="ស្វែងរកតាមឈ្មោះ ឬអត្តលេខ..." class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div id="employee-list" class="flex flex-col space-y-2 max-h-[70vh] overflow-y-auto">
+                <!-- បញ្ជីឈ្មោះបុគ្គលិកនឹងបង្ហាញនៅទីនេះ -->
+            </div>
+        </div>
+
+        <!-- 3. អេក្រង់វត្តមាន (Main) -->
+        <div id="main-screen" class="hidden">
+            <!-- User Info Header -->
+            <div class="p-4 bg-blue-600 text-white rounded-b-lg shadow-md">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <img id="user-photo-main" src="https://placehold.co/100x100/EBF4FF/76A9FA?text=User" 
+                             onerror="this.src='https://placehold.co/100x100/EBF4FF/76A9FA?text=User';"
+                             alt="User Photo" class="w-14 h-14 rounded-full object-cover border-2 border-white">
+                        <div>
+                            <h2 class="text-xl font-bold" id="user-name-main">...</h2>
+                            <p class="text-sm opacity-90" id="user-id-main">...</p>
+                        </div>
+                    </div>
+                    <button id="change-user-btn" class="text-sm bg-white text-blue-600 px-3 py-1 rounded-full shadow hover:bg-gray-100 transition-colors">
+                        ប្តូរគណនី
+                    </button>
+                </div>
+                <p class="text-sm mt-2" id="user-dept-main">ផ្នែក៖ ...</p>
+            </div>
+
+            <!-- Digital Clock -->
+            <div class="p-6 text-center">
+                <h3 class="text-lg font-semibold text-gray-700">ពេលវេលាថ្ងៃនេះ</h3>
+                <div id="digital-clock" class="text-5xl font-bold text-gray-900 my-2">00:00:00</div>
+                <div id="current-date" class="text-lg text-gray-600">...</div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="px-6 py-4 space-y-4">
+                <h3 class="text-lg font-semibold text-gray-700 text-center">សកម្មភាពវត្តមាន</h3>
+                <button id="check-in-btn" class="w-full bg-green-500 text-white text-xl font-bold py-5 rounded-lg shadow-lg hover:bg-green-600 active:bg-green-700 transition-all transform active:scale-95 disabled:bg-gray-300 disabled:shadow-none disabled:scale-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h5a3 3 0 013 3v1" />
+                    </svg>
+                    ស្កេនចូល (Check In)
+                </button>
+                <button id="check-out-btn" class="w-full bg-red-500 text-white text-xl font-bold py-5 rounded-lg shadow-lg hover:bg-red-600 active:bg-red-700 transition-all transform active:scale-95 disabled:bg-gray-300 disabled:shadow-none disabled:scale-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m5 4v1a3 3 0 003 3h4a3 3 0 003-3V7a3 3 0 00-3-3h-4a3 3 0 00-3 3v1" />
+                    </svg>
+                    ស្កេនចេញ (Check Out)
+                </button>
+            </div>
+
+            <!-- Status Display -->
+            <div class="px-6 py-4 mt-4 border-t border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2 text-center">ស្ថានភាពថ្ងៃនេះ</h3>
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">ម៉ោងចូល៖</span>
+                        <span id="status-check-in" class="text-lg font-bold text-green-600">--:--</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">ម៉ោងចេញ៖</span>
+                        <span id="status-check-out" class="text-lg font-bold text-red-600">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Message Modal -->
+    <div id="message-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+            <h3 id="message-title" class="text-xl font-bold mb-2">...</h3>
+            <p id="message-body" class="text-gray-600 mb-6">...</p>
+            <button id="message-close-btn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                បិទ
+            </button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            onSnapshot, 
+            updateDoc,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase and App State
+        let db, auth, appId, userId;
+        let selectedEmployee = null;
+        let employeesList = [];
+        let todayListenerUnsubscribe = null;
+        let todayAttendanceData = {};
+
+        // Google Sheet Config (ពីអ្នកប្រើប្រាស់)
+        const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
+        const SHEET_NAME = 'DIList';
+        // E=0, L=7, R=13, AA=22 (គិតពី E ជា 0)
+        const SHEET_RANGE = 'E9:AA'; 
+        const COL_INDEX = {
+            ID: 0,      // Column E
+            NAME: 7,    // Column L (L is 7th col after E)
+            DEPT: 13,   // Column R (R is 13th col after E)
+            PHOTO: 22   // Column AA (AA is 22nd col after E)
+        };
+
+        // DOM Elements
+        const screens = {
+            loading: document.getElementById('loading-screen'),
+            select: document.getElementById('select-screen'),
+            main: document.getElementById('main-screen'),
+        };
+        const employeeListEl = document.getElementById('employee-list');
+        const searchInputEl = document.getElementById('search-input');
+        
+        const clockEl = document.getElementById('digital-clock');
+        const dateEl = document.getElementById('current-date');
+        
+        const checkInBtn = document.getElementById('check-in-btn');
+        const checkOutBtn = document.getElementById('check-out-btn');
+        const changeUserBtn = document.getElementById('change-user-btn');
+        
+        const statusCheckInEl = document.getElementById('status-check-in');
+        const statusCheckOutEl = document.getElementById('status-check-out');
+
+        const userPhotoMain = document.getElementById('user-photo-main');
+        const userNameMain = document.getElementById('user-name-main');
+        const userIdMain = document.getElementById('user-id-main');
+        const userDeptMain = document.getElementById('user-dept-main');
+
+        // Message Modal Elements
+        const messageModal = document.getElementById('message-modal');
+        const messageTitle = document.getElementById('message-title');
+        const messageBody = document.getElementById('message-body');
+        const messageCloseBtn = document.getElementById('message-close-btn');
+
+        // --- Helper Functions ---
+
+        /**
+         * បង្ហាញ Modal សម្រាប់ផ្ញើសារ
+         * @param {string} title ចំណងជើង
+         * @param {string} body ខ្លឹមសារ
+         * @param {string} type ប្រភេទ (success, error)
+         */
+        function showMessage(title, body, type = 'success') {
+            messageTitle.textContent = title;
+            messageBody.textContent = body;
+            
+            if (type === 'error') {
+                messageTitle.classList.remove('text-green-600');
+                messageTitle.classList.add('text-red-600');
+            } else {
+                messageTitle.classList.remove('text-red-600');
+                messageTitle.classList.add('text-green-600');
+            }
+            
+            messageModal.classList.remove('hidden');
+        }
+        
+        messageCloseBtn.addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+
+        /**
+         * បង្ហាញ Screen ដែលបានកំណត់
+         * @param {string} screenName ('loading', 'select', 'main')
+         */
+        function showScreen(screenName) {
+            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+            if (screens[screenName]) {
+                screens[screenName].classList.remove('hidden');
+            }
+        }
+
+        /**
+         * បម្លែងម៉ោងទៅជាទម្រង់ HH:mm:ss
+         * @param {Date | string} dateObj
+         */
+        function formatTime(dateObj) {
+            if (!dateObj) return '--:--';
+            const date = typeof dateObj === 'string' ? new Date(dateObj) : dateObj;
+            return date.toLocaleTimeString('en-GB'); // 24-hour format
+        }
+
+        /**
+         * យកថ្ងៃខែឆ្នាំបច្ចុប្បន្ន ជាទម្រង់ YYYY-MM-DD
+         * @returns {string}
+         */
+        function getTodayDateString() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        /**
+         * Update នាឡិកា
+         */
+        function updateClock() {
+            const now = new Date();
+            clockEl.textContent = now.toLocaleTimeString('en-GB');
+            dateEl.textContent = now.toLocaleDateString('km-KH', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        // --- Firebase Functions ---
+
+        /**
+         * ចាប់ផ្តើម Firebase
+         */
+        async function initFirebase() {
+            try {
+                // យក Config ពី Global variables
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // បើក Debug Log សម្រាប់ Firestore
+                setLogLevel('debug');
+
+                // តាមដានស្ថានភាព Auth
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase Authenticated. User ID:", userId);
+                        // បន្ទាប់ពី Auth ដំណើរការ, ព្យាយាមទាញអ្នកប្រើប្រាស់ដែលបានជ្រើសរើស
+                        loadSelectedEmployee();
+                    } else {
+                        // បើមិនទាន់ Login, ព្យាយាម Login
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (authError) {
+                            console.error("Firebase Auth Error:", authError);
+                            showMessage("បញ្ហា Auth", "មិនអាចភ្ជាប់ទៅសេវាកម្ម Firebase បានទេ។", "error");
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Firebase Init Error:", e);
+                showMessage("បញ្ហាធ្ងន់ធ្ងរ", "មិនអាចចាប់ផ្តើមកម្មវិធី Firebase បានទេ។", "error");
+                showScreen('loading'); // Stay on loading
+                screens.loading.innerHTML = '<h2 class="text-xl font-semibold text-red-700">មានបញ្ហាក្នុងការភ្ជាប់ Firebase</h2>';
+            }
+        }
+
+        // --- Google Sheet Functions ---
+
+        /**
+         * ទាញយកបញ្ជីបុគ្គលិកពី Google Sheet
+         */
+        async function fetchEmployeeList() {
+            showScreen('loading');
+            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=${SHEET_RANGE}`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                let text = await response.text();
+                
+                // កាត់ string "google.visualization.Query.setResponse(" ចេញ
+                const jsonText = text.substring(47, text.length - 2);
+                const data = JSON.parse(jsonText);
+
+                if (!data.table || !data.table.rows) {
+                    throw new Error("Invalid Google Sheet JSON format.");
+                }
+
+                employeesList = data.table.rows
+                    .map(row => {
+                        // ត្រូវប្រាកដថា row.c (cells) មានទិន្នន័យ
+                        if (!row.c || row.c.length === 0) return null;
+                        
+                        const id = row.c[COL_INDEX.ID] ? row.c[COL_INDEX.ID].v : null;
+                        const name = row.c[COL_INDEX.NAME] ? row.c[COL_INDEX.NAME].v : null;
+                        
+                        // បើគ្មាន ID ឬ ឈ្មោះ គឺមិនយក
+                        if (!id || !name) return null;
+
+                        return {
+                            id: id,
+                            name: name,
+                            dept: row.c[COL_INDEX.DEPT] ? row.c[COL_INDEX.DEPT].v : 'N/A',
+                            photo: row.c[COL_INDEX.PHOTO] ? row.c[COL_INDEX.PHOTO].v : null,
+                        };
+                    })
+                    .filter(Boolean); // កំចាត់ចោលនូវតម្លៃ null
+
+                console.log(`Fetched ${employeesList.length} employees.`);
+                renderEmployeeList();
+                // បើមិនទាន់មានអ្នកប្រើប្រាស់បានជ្រើសរើស គឺបង្ហាញ Screen ជ្រើសរើស
+                if (!selectedEmployee) {
+                    showScreen('select');
+                }
+
+            } catch (e) {
+                console.error("Fetch Employee List Error:", e);
+                showMessage("បញ្ហាទាញទិន្នន័យ", "មិនអាចទាញបញ្ជីបុគ្គលិកពី Google Sheet បានទេ។ សូមប្រាកដថា Sheet ត្រូវបាន 'Published to the web'។", "error");
+                // បង្ហាញកន្លែងជ្រើសរើសដដែល តែប្រាប់ថាមានបញ្ហា
+                showScreen('select');
+                employeeListEl.innerHTML = `<p class="text-red-500 text-center">មិនអាចទាញទិន្នន័យបានទេ។</p>`;
+            }
+        }
+
+        /**
+         * បង្ហាញបញ្ជីបុគ្គលិកទៅលើ UI
+         * @param {string} filter 
+         */
+        function renderEmployeeList(filter = '') {
+            const lowerFilter = filter.toLowerCase();
+            const filteredList = employeesList.filter(emp => 
+                emp.name.toLowerCase().includes(lowerFilter) || 
+                emp.id.toLowerCase().includes(lowerFilter)
+            );
+
+            if (filteredList.length === 0) {
+                employeeListEl.innerHTML = `<p class="text-gray-500 text-center">មិនមានទិន្នន័យទេ។</p>`;
+                return;
+            }
+
+            employeeListEl.innerHTML = filteredList.map(emp => `
+                <div class="flex items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 cursor-pointer transition-colors" data-id="${emp.id}">
+                    <img src="${emp.photo || 'https://placehold.co/100x100/EBF4FF/76A9FA?text=User'}" 
+                         onerror="this.src='https://placehold.co/100x100/EBF4FF/76A9FA?text=User';"
+                         alt="Photo" class="w-12 h-12 rounded-full object-cover mr-4">
+                    <div class="flex-grow">
+                        <p class="font-bold text-gray-800">${emp.name}</p>
+                        <p class="text-sm text-gray-600">ID: ${emp.id} | ${emp.dept}</p>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+            `).join('');
+        }
+
+        // --- App Logic Functions ---
+
+        /**
+         * ដំណើរការពេលអ្នកប្រើប្រាស់ចុចជ្រើសរើសឈ្មោះ
+         * @param {Event} event
+         */
+        function handleEmployeeSelect(event) {
+            const target = event.target.closest('[data-id]');
+            if (!target) return;
+
+            const empId = target.dataset.id;
+            const employee = employeesList.find(e => e.id === empId);
+            
+            if (employee) {
+                selectEmployee(employee);
+            }
+        }
+
+        /**
+         * កំណត់អ្នកប្រើប្រាស់ដែលបានជ្រើសរើស
+         * @param {object} employee
+         */
+        function selectEmployee(employee) {
+            selectedEmployee = employee;
+            localStorage.setItem('selectedEmployee', JSON.stringify(employee));
+            
+            // Update Main Screen UI
+            userPhotoMain.src = employee.photo || 'https://placehold.co/100x100/EBF4FF/76A9FA?text=User';
+            userNameMain.textContent = employee.name;
+            userIdMain.textContent = `ID: ${employee.id}`;
+            userDeptMain.textContent = `ផ្នែក៖ ${employee.dept}`;
+
+            // Reset status
+            statusCheckInEl.textContent = '--:--';
+            statusCheckOutEl.textContent = '--:--';
+            
+            showScreen('main');
+            
+            // ចាប់ផ្តើមស្តាប់ទិន្នន័យវត្តមានសម្រាប់ថ្ងៃនេះ
+            attachTodayListener();
+        }
+
+        /**
+         * ព្យាយាមទាញអ្នកប្រើប្រាស់ដែលបានជ្រើសរើសពី localStorage
+         */
+        function loadSelectedEmployee() {
+            if (!userId) {
+                console.log("រង់ចាំ userId...");
+                return;
+            }
+
+            const storedEmployee = localStorage.getItem('selectedEmployee');
+            if (storedEmployee) {
+                console.log("រកឃើញអ្នកប្រើប្រាស់ក្នុង LocalStorage");
+                selectEmployee(JSON.parse(storedEmployee));
+            } else {
+                console.log("មិនមានអ្នកប្រើប្រាស់, កំពុងទាញបញ្ជី...");
+                // បើមិនមាន, គឺត្រូវទាញបញ្ជីឈ្មោះ
+                fetchEmployeeList();
+            }
+        }
+
+        /**
+         * ចុចប្តូរគណនី
+         */
+        function changeUser() {
+            selectedEmployee = null;
+            localStorage.removeItem('selectedEmployee');
+            
+            // បញ្ឈប់ការស្តាប់ទិន្នន័យ
+            if (todayListenerUnsubscribe) {
+                todayListenerUnsubscribe();
+                todayListenerUnsubscribe = null;
+            }
+            
+            // បើកបញ្ជីឈ្មោះឡើងវិញ (មិនបាច់ fetch ឡើងវិញទេ បើមានហើយ)
+            if (employeesList.length > 0) {
+                renderEmployeeList();
+                showScreen('select');
+            } else {
+                fetchEmployeeList(); // Fetch បើមិនទាន់មាន
+            }
+        }
+
+        /**
+         * ភ្ជាប់ onSnapshot listener សម្រាប់ទិន្នន័យវត្តមានថ្ងៃនេះ
+         */
+        function attachTodayListener() {
+            if (!userId || !selectedEmployee) return;
+
+            // បញ្ឈប់ Listener ចាស់ (បើមាន)
+            if (todayListenerUnsubscribe) {
+                todayListenerUnsubscribe();
+            }
+
+            const todayDate = getTodayDateString();
+            const docPath = `artifacts/${appId}/users/${userId}/attendance/${todayDate}`;
+            const docRef = doc(db, docPath);
+
+            console.log(`កំពុងស្តាប់ទិន្នន័យពី៖ ${docPath}`);
+
+            todayListenerUnsubscribe = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    console.log("Current data: ", docSnap.data());
+                    todayAttendanceData = docSnap.data();
+                    updateAttendanceUI(todayAttendanceData);
+                } else {
+                    console.log("No such document!");
+                    todayAttendanceData = {}; // Reset
+                    updateAttendanceUI({});
+                }
+            }, (error) => {
+                console.error("Snapshot Error: ", error);
+                showMessage("បញ្ហា", "មិនអាចស្តាប់ទិន្នន័យវត្តមានបានទេ។", "error");
+            });
+        }
+
+        /**
+         * Update UI ផ្អែកលើទិន្នន័យវត្តមាន
+         * @param {object} data
+         */
+        function updateAttendanceUI(data) {
+            const checkInTime = data.checkIn ? formatTime(data.checkIn) : '--:--';
+            const checkOutTime = data.checkOut ? formatTime(data.checkOut) : '--:--';
+
+            statusCheckInEl.textContent = checkInTime;
+            statusCheckOutEl.textContent = checkOutTime;
+
+            // ស្ថានភាពប៊ូតុង
+            if (data.checkIn) {
+                checkInBtn.disabled = true;
+                checkInBtn.textContent = `បានស្កេនចូល @ ${checkInTime}`;
+            } else {
+                checkInBtn.disabled = false;
+                checkInBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h5a3 3 0 013 3v1" />
+                    </svg>
+                    ស្កេនចូល (Check In)
+                `;
+            }
+
+            if (data.checkOut) {
+                checkOutBtn.disabled = true;
+                checkOutBtn.textContent = `បានស្កេនចេញ @ ${checkOutTime}`;
+            } else {
+                checkOutBtn.disabled = false; // ប៊ូតុង Check Out អាចចុចបានដរាបណាមិនទាន់បាន Check Out
+                checkOutBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m5 4v1a3 3 0 003 3h4a3 3 0 003-3V7a3 3 0 00-3-3h-4a3 3 0 00-3 3v1" />
+                    </svg>
+                    ស្កេនចេញ (Check Out)
+                `;
+            }
+        }
+
+        /**
+         * ដំណើរការពេលចុច Check In
+         */
+        async function handleCheckIn() {
+            if (todayAttendanceData.checkIn) {
+                showMessage("កំណត់ចំណាំ", "អ្នកបានស្កេនចូលរួចហើយ។", "error");
+                return;
+            }
+
+            checkInBtn.disabled = true;
+            checkInBtn.textContent = "កំពុងដំណើរការ...";
+
+            const todayDate = getTodayDateString();
+            const docRef = doc(db, `artifacts/${appId}/users/${userId}/attendance/${todayDate}`);
+            const now = new Date().toISOString();
+
+            const dataToSet = {
+                employeeId: selectedEmployee.id,
+                employeeName: selectedEmployee.name,
+                employeeDept: selectedEmployee.dept,
+                checkIn: now,
+                checkOut: null // កំណត់ checkOut ទៅ null
+            };
+
+            try {
+                // ប្រើ setDoc ជាមួយ merge: true ដើម្បីបង្កើតថ្មី ឬ update
+                await setDoc(docRef, dataToSet, { merge: true });
+                showMessage("ជោគជ័យ!", `បានស្កេនចូលនៅម៉ោង ${formatTime(now)}`);
+            } catch (e) {
+                console.error("Check In Error: ", e);
+                showMessage("បញ្ហា", "មិនអាចរក្សាទុកទិន្នន័យស្កេនចូលបានទេ។", "error");
+                // UI នឹង update វិញដោយ onSnapshot
+            }
+        }
+
+        /**
+         * ដំណើរការពេលចុច Check Out
+         */
+        async function handleCheckOut() {
+            if (!todayAttendanceData.checkIn) {
+                showMessage("បញ្ហា", "អ្នកត្រូវស្កេនចូលជាមុនសិន ទើបអាចស្កេនចេញបាន។", "error");
+                return;
+            }
+            if (todayAttendanceData.checkOut) {
+                showMessage("កំណត់ចំណាំ", "អ្នកបានស្កេនចេញរួចហើយ។", "error");
+                return;
+            }
+
+            checkOutBtn.disabled = true;
+            checkOutBtn.textContent = "កំពុងដំណើរការ...";
+
+            const todayDate = getTodayDateString();
+            const docRef = doc(db, `artifacts/${appId}/users/${userId}/attendance/${todayDate}`);
+            const now = new Date().toISOString();
+
+            const dataToUpdate = {
+                checkOut: now
+            };
+
+            try {
+                // ប្រើ updateDoc ព្រោះយើងដឹងថា document មានហើយ
+                await updateDoc(docRef, dataToUpdate);
+                showMessage("ជោគជ័យ!", `បានស្កេនចេញនៅម៉ោង ${formatTime(now)}`);
+            } catch (e) {
+                console.error("Check Out Error: ", e);
+                showMessage("បញ្ហា", "មិនអាចរក្សាទុកទិន្នន័យស្កេនចេញបានទេ។", "error");
+                // UI នឹង update វិញដោយ onSnapshot
+            }
+        }
+
+
+        // --- Event Listeners ---
+        searchInputEl.addEventListener('input', (e) => {
+            renderEmployeeList(e.target.value);
+        });
+
+        employeeListEl.addEventListener('click', handleEmployeeSelect);
+        changeUserBtn.addEventListener('click', changeUser);
+        checkInBtn.addEventListener('click', handleCheckIn);
+        checkOutBtn.addEventListener('click', handleCheckOut);
+
+        // --- App Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            showScreen('loading');
+            initFirebase();
+            setInterval(updateClock, 1000); // Update នាឡិកា
+            updateClock(); // Update លើកដំបូង
+        });
+
+    </script>
+</body>
+</html>
