@@ -638,7 +638,7 @@
                 const todayDocRef = doc(attendanceCollectionRef, todayDocId);
                 await setDoc(todayDocRef, data); 
                 
-                showMessage('ជោគជ័យ', 'បានចុះវត្តមានចូលដោយជោគជ័យ។');
+                // showMessage('ជោគជ័យ', 'បានចុះវត្តមានចូលដោយជោគជ័យ។'); // បានដកចេញតាមសំណើ
                 // onSnapshot នឹង update UI
                 
             } catch (error) {
@@ -671,7 +671,7 @@
                 const todayDocRef = doc(attendanceCollectionRef, todayDocId);
                 await updateDoc(todayDocRef, data); 
                 
-                showMessage('ជោគជ័យ', 'បានចុះវត្តមានចេញដោយជោគជ័យ។');
+                // showMessage('ជោគជ័យ', 'បានចុះវត្តមានចេញដោយជោគជ័យ។'); // បានដកចេញតាមសំណើ
                 // onSnapshot នឹង update UI
 
             } catch (error) {
@@ -706,4 +706,5 @@
     </script>
 </body>
 </html>
+
 
