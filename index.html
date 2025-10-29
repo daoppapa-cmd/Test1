@@ -3,765 +3,544 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ប្រព័ន្ធគ្រប់គ្រងវត្តមាន</title>
+    <title>កម្មវិធីស្កេនវត្តមាន</title>
+    <!-- ប្រើ Tailwind CSS សម្រាប់ Styles -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- ប្រើ Noto Sans Khmer សម្រាប់ Font ភាសាខ្មែរ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* រចនាប័ទ្មសម្រាប់ Font ខ្មែរ */
-        @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap');
+        /* កំណត់ Font គោលជា Noto Sans Khmer */
         body {
-            font-family: 'Kantumruy Pro', sans-serif;
-            -webkit-tap-highlight-color: transparent; /* បំបាត់ការប្លីកពេលចុចលើទូរស័ព
-
-ទ */
+            font-family: 'Noto Sans Khmer', sans-serif;
         }
-        /* បង្ហាញ/លាក់អេក្រង់ */
-        .hidden {
-            display: none;
+        /* Style សម្រាប់ Loading Spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
         }
-        /* សម្រាប់ Modal */
-        #message-modal {
-            transition: opacity 0.3s ease-in-out;
-        }
-        #message-modal.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        #message-modal {
-            opacity: 1;
-            pointer-events: auto;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body class="bg-gray-100">
 
-    <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg">
+    <!-- កំណត់ទំហំ App ដូចទូរស័ព្ទ (Mobile View) -->
+    <div id="app-container" class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
 
-        <!-- 1. អេក្រង់ Loading -->
-        <div id="loading-screen" class="flex flex-col items-center justify-center min-h-screen p-6 text-center">
-            <svg class="animate-spin h-12 w-12 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <h2 class="text-xl font-semibold text-gray-700">កំពុងទាញយកទិន្នន័យ...</h2>
-            <p class="text-gray-500">សូមមេត្តារង់ចាំបន្តិច</p>
+        <!-- 1. អេក្រង់ Loading (ពេលទាញទិន្នន័យ) -->
+        <div id="loading-screen" class="flex flex-col items-center justify-center flex-1 p-6">
+            <div class="loader mb-4"></div>
+            <p class="text-gray-600 text-lg">កំពុងទាញទិន្នន័យ...</p>
+            <p id="auth-status" class="text-sm text-gray-500 mt-2"></p>
         </div>
 
-        <!-- 2. អេក្រង់ជ្រើសរើសបុគ្គលិក -->
-        <div id="select-screen" class="hidden p-4">
-            <h1 class="text-2xl font-bold text-center text-blue-700 mb-4">ជ្រើសរើសគណនីរបស់អ្នក</h1>
+        <!-- 2. អេក្រង់ជ្រើសរើសបុគ្គលិក (Login) -->
+        <div id="selection-screen" class="hidden flex-1 flex-col p-4">
+            <h1 class="text-2xl font-bold text-center text-blue-700 mb-4">ស្វែងរកគណនីរបស់អ្នក</h1>
             <div class="mb-4">
-                <input type="text" id="search-input" placeholder="ស្វែងរកតាមឈ្មោះ ឬអត្តលេខ..." class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="search" id="search-bar" placeholder="ស្វែងរកតាមឈ្មោះ ឬអត្តលេខ..." class="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
-            <div id="employee-list" class="flex flex-col space-y-2 max-h-[70vh] overflow-y-auto">
-                <!-- បញ្ជីឈ្មោះបុគ្គលិកនឹងបង្ហាញនៅទីនេះ -->
+            <div id="employee-list" class="flex-1 overflow-y-auto space-y-3 pr-2">
+                <!-- បញ្ជីបុគ្គលិកនឹងបង្ហាញនៅទីនេះ -->
             </div>
         </div>
 
-        <!-- 3. អេក្រង់វត្តមាន (Main) -->
-        <div id="main-screen" class="hidden">
-            <!-- User Info Header -->
-            <div class="p-4 bg-blue-600 text-white rounded-b-lg shadow-md">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <img id="user-photo-main" src="https://placehold.co/100x100/EBF4FF/76A9FA?text=User" 
-                             onerror="this.src='https://placehold.co/100x100/EBF4FF/76A9FA?text=User';"
-                             alt="User Photo" class="w-14 h-14 rounded-full object-cover border-2 border-white">
-                        <div>
-                            <h2 class="text-xl font-bold" id="user-name-main">...</h2>
-                            <p class="text-sm opacity-90" id="user-id-main">...</p>
-                        </div>
-                    </div>
-                    <button id="change-user-btn" class="text-sm bg-white text-blue-600 px-3 py-1 rounded-full shadow hover:bg-gray-100 transition-colors">
-                        ប្តូរគណនី
-                    </button>
-                </div>
-                <p class="text-sm mt-2" id="user-dept-main">ផ្នែក៖ ...</p>
+        <!-- 3. អេក្រង់ Dashboard សម្រាប់ Check-in/Check-out -->
+        <div id="dashboard-screen" class="hidden flex-1 flex-col">
+            <!-- ប៊ូតុងត្រឡប់ក្រោយ -->
+            <header class="bg-blue-700 text-white p-4 shadow-md relative">
+                <button id="logout-button" class="absolute top-0 left-0 mt-3 ml-3 p-2 rounded-full hover:bg-blue-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <h1 class="text-xl font-bold text-center">ប្រព័ន្ធស្កេនវត្តមាន</h1>
+            </header>
+            
+            <!-- ព័ត៌មានបុគ្គលិក -->
+            <div class="p-6 flex flex-col items-center border-b">
+                <img id="user-photo" src="https://placehold.co/100x100/e2e8f0/e2e8f0?text=Photo" 
+                     onerror="this.src='https://placehold.co/100x100/e2e8f0/cbd5e1?text=No+Photo'"
+                     class="w-24 h-24 rounded-full object-cover border-4 border-gray-200 shadow-lg mb-4">
+                <h2 id="user-name" class="text-2xl font-bold text-gray-800"></h2>
+                <p id="user-id" class="text-sm text-gray-500"></p>
+                <p id="user-dept" class="text-md text-blue-600 font-medium mt-1"></p>
             </div>
 
-            <!-- Digital Clock -->
-            <div class="p-6 text-center">
-                <h3 class="text-lg font-semibold text-gray-700">ពេលវេលាថ្ងៃនេះ</h3>
-                <div id="digital-clock" class="text-5xl font-bold text-gray-900 my-2">00:00:00</div>
-                <div id="current-date" class="text-lg text-gray-600">...</div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="px-6 py-4 space-y-4">
-                <h3 class="text-lg font-semibold text-gray-700 text-center">សកម្មភាពវត្តមាន</h3>
-                <button id="check-in-btn" class="w-full bg-green-500 text-white text-xl font-bold py-5 rounded-lg shadow-lg hover:bg-green-600 active:bg-green-700 transition-all transform active:scale-95 disabled:bg-gray-300 disabled:shadow-none disabled:scale-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <!-- ប៊ូតុង Check-in / Check-out -->
+            <div class="grid grid-cols-2 gap-4 p-6">
+                <button id="check-in-btn" class="flex flex-col items-center justify-center bg-green-500 text-white p-6 rounded-lg shadow-lg hover:bg-green-600 transition duration-300 transform hover:scale-105">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h5a3 3 0 013 3v1" />
                     </svg>
-                    ស្កេនចូល (Check In)
+                    <span class="text-lg font-bold">ចុះឈ្មោះចូល</span>
                 </button>
-                <button id="check-out-btn" class="w-full bg-red-500 text-white text-xl font-bold py-5 rounded-lg shadow-lg hover:bg-red-600 active:bg-red-700 transition-all transform active:scale-95 disabled:bg-gray-300 disabled:shadow-none disabled:scale-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m5 4v1a3 3 0 003 3h4a3 3 0 003-3V7a3 3 0 00-3-3h-4a3 3 0 00-3 3v1" />
+                <button id="check-out-btn" class="flex flex-col items-center justify-center bg-red-500 text-white p-6 rounded-lg shadow-lg hover:bg-red-600 transition duration-300 transform hover:scale-105">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m5 4v1a3 3 0 003 3h2a3 3 0 003-3V7a3 3 0 00-3-3h-2a3 3 0 00-3 3v1" />
                     </svg>
-                    ស្កេនចេញ (Check Out)
+                    <span class="text-lg font-bold">ចុះឈ្មោះចេញ</span>
                 </button>
             </div>
 
-            <!-- Status Display -->
-            <div class="px-6 py-4 mt-4 border-t border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-700 mb-2 text-center">ស្ថានភាពថ្ងៃនេះ</h3>
-                <div class="bg-gray-50 p-4 rounded-lg shadow-inner space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600 font-medium">ម៉ោងចូល៖</span>
-                        <span id="status-check-in" class="text-lg font-bold text-green-600">--:--</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600 font-medium">ម៉ោងចេញ៖</span>
-                        <span id="status-check-out" class="text-lg font-bold text-red-600">--:--</span>
-                    </div>
+            <!-- ប្រវត្តិ (History) -->
+            <div class="flex-1 p-6 pt-0">
+                <h3 class="text-lg font-semibold mb-3 text-gray-700">ប្រវត្តិវត្តមានថ្ងៃនេះ</h3>
+                <div id="history-list" class="space-y-2 overflow-y-auto h-48 bg-gray-50 p-3 rounded-lg border">
+                    <!-- ប្រវត្តិនឹងបង្ហាញនៅទីនេះ -->
+                    <p class="text-gray-500 text-center">មិនទាន់មានទិន្នន័យ</p>
                 </div>
             </div>
         </div>
 
-    </div>
-
-    <!-- Message Modal -->
-    <div id="message-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
-            <h3 id="message-title" class="text-xl font-bold mb-2">...</h3>
-            <p id="message-body" class="text-gray-600 mb-6">...</p>
-            <button id="message-close-btn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-                បិទ
-            </button>
-        </div>
-    </div>
+    </div> <!-- /end #app-container -->
 
 
+    <!-- Firebase SDK -->
     <script type="module">
-        // Import Firebase modules
+        // នាំចូល Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
             signInAnonymously, 
             signInWithCustomToken, 
-            onAuthStateChanged 
+            onAuthStateChanged,
+            setPersistence,
+            browserLocalPersistence
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
             doc, 
-            setDoc, 
-            onSnapshot, 
-            updateDoc,
+            addDoc, 
+            collection, 
+            query, 
+            where, 
+            onSnapshot,
+            Timestamp,
             setLogLevel
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase and App State
-        let db, auth, appId, userId;
-        let selectedEmployee = null;
-        let employeesList = [];
-        let todayListenerUnsubscribe = null;
-        let todayAttendanceData = {};
-        let currentListenerDate = null; // បានបន្ថែម៖ តាមដានថ្ងៃដែល Listener កំពុងស្តាប់
-        let isProcessing = false; // បានបន្ថែម៖ ទង់សម្រាប់ទប់ស្កាត់ការចុចซ้ำ
-
-        // Google Sheet Config (ពីអ្នកប្រើប្រាស់)
+        // 1. Firebase Configuration (ប្រើ Environment Variables ដូចក្នុង Guideline)
+        const firebaseConfigFromEnv = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : null;
+        
+        // ប្រើ Config ដែល User ផ្ដល់ឲ្យ ប្រសិនបើ __firebase_config មិនមាន
+        const finalFirebaseConfig = firebaseConfigFromEnv || {
+             apiKey: "AIzaSyA3LPVD0nRfMuEoQSCs5HiwztRmlWqw--c",
+             authDomain: "checkinme-305e8.firebaseapp.com",
+             projectId: "checkinme-305e8",
+             storageBucket: "checkinme-305e8.firebasestorage.app",
+             messagingSenderId: "702908288371",
+             appId: "1:702908288371:web:bb067e1a238bd1e5288906",
+             measurementId: "G-ZFFWRTD6QE"
+        };
+        
+        // 2. Google Sheet Configuration
         const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
         const SHEET_NAME = 'DIList';
-        // E=0, L=7, R=13, AA=22 (គិតពី E ជា 0)
+        // យើងទាញទិន្នន័យពីជួរ E ដល់ AA (E=0, L=7, R=13, AA=22)
         const SHEET_RANGE = 'E9:AA'; 
-        const COL_INDEX = {
-            ID: 0,      // Column E
-            NAME: 7,    // Column L (L is 7th col after E)
-            DEPT: 13,   // Column R (R is 13th col after E)
-            PHOTO: 22   // Column AA (AA is 22nd col after E)
-        };
+        const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=${SHEET_RANGE}`;
 
-        // DOM Elements
-        const screens = {
-            loading: document.getElementById('loading-screen'),
-            select: document.getElementById('select-screen'),
-            main: document.getElementById('main-screen'),
-        };
-        const employeeListEl = document.getElementById('employee-list');
-        const searchInputEl = document.getElementById('search-input');
-        
-        const clockEl = document.getElementById('digital-clock');
-        const dateEl = document.getElementById('current-date');
-        
+        // 3. App ID (ប្រើ Environment Variable)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-checkin-app';
+
+        // 4. Firebase Services
+        let app, auth, db;
+
+        // 5. App State
+        let allEmployees = [];
+        let selectedEmployee = null;
+        let userId = null;
+        let unsubscribeHistory = null; // សម្រាប់បិទ listener
+        let hasCheckedInToday = false; // ត្រួតពិនិត្យស្ថានភាពស្កេនចូល
+        let hasCheckedOutToday = false; // ត្រួតពិនិត្យស្ថានភាពស្កេនចេញ
+
+        // 6. DOM Elements
+        const loadingScreen = document.getElementById('loading-screen');
+        const authStatus = document.getElementById('auth-status');
+        const selectionScreen = document.getElementById('selection-screen');
+        const dashboardScreen = document.getElementById('dashboard-screen');
+        const searchBar = document.getElementById('search-bar');
+        const employeeList = document.getElementById('employee-list');
+        const logoutButton = document.getElementById('logout-button');
+        const userPhoto = document.getElementById('user-photo');
+        const userName = document.getElementById('user-name');
+        const userIdElem = document.getElementById('user-id');
+        const userDept = document.getElementById('user-dept');
         const checkInBtn = document.getElementById('check-in-btn');
         const checkOutBtn = document.getElementById('check-out-btn');
-        const changeUserBtn = document.getElementById('change-user-btn');
-        
-        const statusCheckInEl = document.getElementById('status-check-in');
-        const statusCheckOutEl = document.getElementById('status-check-out');
+        const historyList = document.getElementById('history-list');
 
-        const userPhotoMain = document.getElementById('user-photo-main');
-        const userNameMain = document.getElementById('user-name-main');
-        const userIdMain = document.getElementById('user-id-main');
-        const userDeptMain = document.getElementById('user-dept-main');
+        // 7. Helper Function (សម្រាប់បង្ហាញ/លាក់ Screen)
+        function showScreen(screenId) {
+            loadingScreen.classList.add('hidden');
+            selectionScreen.classList.add('hidden');
+            dashboardScreen.classList.add('hidden');
 
-        // Message Modal Elements
-        const messageModal = document.getElementById('message-modal');
-        const messageTitle = document.getElementById('message-title');
-        const messageBody = document.getElementById('message-body');
-        const messageCloseBtn = document.getElementById('message-close-btn');
+            if (screenId === 'loading') {
+                loadingScreen.classList.remove('hidden');
+            } else if (screenId === 'selection') {
+                selectionScreen.classList.remove('hidden');
+                selectionScreen.classList.add('flex');
+            } else if (screenId === 'dashboard') {
+                dashboardScreen.classList.remove('hidden');
+                dashboardScreen.classList.add('flex');
+            }
+        }
 
-        // --- Helper Functions ---
+        // 8. Main Function (ពេលបើកទំព័រ)
+        window.onload = function() {
+            if (!finalFirebaseConfig.apiKey) {
+                loadingScreen.innerHTML = '<p class="text-red-500">Error: Firebase configuration is missing.</p>';
+                return;
+            }
+            try {
+                app = initializeApp(finalFirebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                setLogLevel('Debug'); // សម្រាប់ Debug
+                
+                // ព្យាយាមរក្សាការ Login
+                setPersistence(auth, browserLocalPersistence)
+                    .then(() => {
+                        initFirebaseAuth();
+                    })
+                    .catch((error) => {
+                        console.error("Error setting auth persistence: ", error);
+                        initFirebaseAuth(); // បន្តដំណើរការធម្មតា
+                    });
+            } catch (e) {
+                console.error("Error initializing Firebase:", e);
+                loadingScreen.innerHTML = `<p class="text-red-500">Error: Could not initialize Firebase. ${e.message}</p>`;
+            }
+        };
 
-        /**
-         * បង្ហាញ Modal សម្រាប់ផ្ញើសារ
-         * @param {string} title ចំណងជើង
-         * @param {string} body ខ្លឹមសារ
-         * @param {string} type ប្រភេទ (success, error)
-         */
-        function showMessage(title, body, type = 'success') {
-            messageTitle.textContent = title;
-            messageBody.textContent = body;
-            
-            if (type === 'error') {
-                messageTitle.classList.remove('text-green-600');
-                messageTitle.classList.add('text-red-600');
-            } else {
-                messageTitle.classList.remove('text-red-600');
-                messageTitle.classList.add('text-green-600');
+        // 9. Firebase Authentication
+        function initFirebaseAuth() {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    authStatus.textContent = "បានផ្ទៀងផ្ទាត់... កំពុងទាញបញ្ជីឈ្មោះ... ";
+                    console.log("Firebase User ID:", userId);
+                    // ពេល Auth ដំណើរការ, ទាញទិន្នន័យពី Google Sheet
+                    fetchEmployeeData();
+                } else {
+                    authStatus.textContent = "កំពុងផ្ទៀងផ្ទាត់គណនី...";
+                    signInUser();
+                }
+            });
+        }
+
+        async function signInUser() {
+            try {
+                // ប្រើ __initial_auth_token ប្រសិនបើមាន
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    console.log("Signing in with custom token...");
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    // បើមិនមាន, ប្រើ Anonymous
+                    console.log("Signing in anonymously...");
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Authentication Error:", error);
+                authStatus.textContent = `Authentication Failed: ${error.message}`;
+            }
+        }
+
+        // 10. Fetch Data ពី Google Sheet
+        async function fetchEmployeeData() {
+            try {
+                const response = await fetch(SHEET_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                let text = await response.text();
+                // ទិន្នន័យពី Google Viz API ត្រូវតែកាត់តួអក្សរខាងដើម និងខាងចុង
+                const jsonText = text.substring(text.indexOf('(') + 1, text.lastIndexOf(')'));
+                const data = JSON.parse(jsonText);
+                
+                if (!data.table || !data.table.rows) {
+                    throw new Error("Invalid Google Sheet data format.");
+                }
+
+                const rows = data.table.rows;
+                // Mapping ទិន្នន័យ (E=c[0], L=c[7], R=c[13], AA=c[22])
+                allEmployees = rows.map(row => ({
+                    id: row.c[0]?.v || 'N/A', // Column E
+                    name: row.c[7]?.v || 'Unknown Name', // Column L
+                    department: row.c[13]?.v || 'N/A', // Column R
+                    photo: row.c[22]?.v || null // Column AA
+                })).filter(emp => emp.id !== 'N/A' && emp.name !== 'Unknown Name'); // តម្រងយកតែអ្នកមានទិន្នន័យ
+                
+                console.log(`Fetched ${allEmployees.length} employees.`);
+                renderEmployeeList(allEmployees);
+                showScreen('selection');
+
+            } catch (error) {
+                console.error("Error fetching Google Sheet data:", error);
+                loadingScreen.innerHTML = `<p class="text-red-500">Error: Could not fetch employee list. ${error.message}</p>`;
+            }
+        }
+
+        // 11. Render បញ្ជីបុគ្គលិក
+        function renderEmployeeList(employees) {
+            employeeList.innerHTML = ''; // សម្អាតបញ្ជីចាស់
+            if (employees.length === 0) {
+                employeeList.innerHTML = '<p class="text-gray-500 text-center">មិនមានទិន្នន័យ</p>';
+                return;
             }
             
-            messageModal.classList.remove('hidden');
+            employees.forEach(emp => {
+                const empCard = document.createElement('div');
+                empCard.className = "flex items-center p-3 bg-white border rounded-lg shadow-sm hover:bg-gray-50 cursor-pointer";
+                empCard.onclick = () => handleEmployeeSelect(emp);
+
+                const photoUrl = emp.photo ? emp.photo : 'https://placehold.co/64x64/e2e8f0/cbd5e1?text=No+Photo';
+                
+                empCard.innerHTML = `
+                    <img src="${photoUrl}" 
+                         onerror="this.src='https://placehold.co/64x64/e2e8f0/cbd5e1?text=Error'"
+                         class="w-12 h-12 rounded-full object-cover mr-4 border">
+                    <div class="flex-1">
+                        <p class="font-bold text-gray-800">${emp.name}</p>
+                        <p class="text-sm text-gray-600">ID: ${emp.id} | ផ្នែក: ${emp.department}</p>
+                    </div>
+                `;
+                employeeList.appendChild(empCard);
+            });
         }
-        
-        messageCloseBtn.addEventListener('click', () => {
-            messageModal.classList.add('hidden');
+
+        // 12. មុខងារស្វែងរក
+        searchBar.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredEmployees = allEmployees.filter(emp => 
+                emp.name.toLowerCase().includes(searchTerm) || 
+                emp.id.toLowerCase().includes(searchTerm)
+            );
+            renderEmployeeList(filteredEmployees);
         });
 
-        /**
-         * បង្ហាញ Screen ដែលបានកំណត់
-         * @param {string} screenName ('loading', 'select', 'main')
-         */
-        function showScreen(screenName) {
-            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
-            if (screens[screenName]) {
-                screens[screenName].classList.remove('hidden');
-            }
-        }
-
-        /**
-         * បម្លែងម៉ោងទៅជាទម្រង់ HH:mm:ss
-         * @param {Date | string} dateObj
-         */
-        function formatTime(dateObj) {
-            if (!dateObj) return '--:--';
-            const date = typeof dateObj === 'string' ? new Date(dateObj) : dateObj;
-            return date.toLocaleTimeString('en-GB'); // 24-hour format
-        }
-
-        /**
-         * យកថ្ងៃខែឆ្នាំបច្ចុប្បន្ន ជាទម្រង់ YYYY-MM-DD
-         * @returns {string}
-         */
-        function getTodayDateString() {
-            return new Date().toISOString().split('T')[0];
-        }
-
-        /**
-         * Update នាឡិកា
-         */
-        function updateClock() {
-            const now = new Date();
-            clockEl.textContent = now.toLocaleTimeString('en-GB');
-            dateEl.textContent = now.toLocaleDateString('km-KH', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-            
-            // បានបន្ថែម៖ ត្រួតពិនិត្យមើលការផ្លាស់ប្តូរថ្ងៃ (ឆ្លងថ្ងៃ)
-            const todayDate = getTodayDateString();
-            if (todayDate !== currentListenerDate && selectedEmployee && userId) {
-                console.log("ថ្ងៃបានផ្លាស់ប្តូរ។ កំពុងភ្ជាប់ Listener ឡើងវិញ...");
-                attachTodayListener();
-            }
-        }
-
-        // --- Firebase Functions ---
-
-        /**
-         * ចាប់ផ្តើម Firebase
-         */
-        async function initFirebase() {
-            try {
-                // យក Config ពី Global variables
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'checkinme-305e8'; // ប្រើ projectId ជា fallback
-
-                // ប្រើ Firebase Config ដែលអ្នកប្រើប្រាស់បានផ្ដល់ឲ្យ
-                const firebaseConfig = {
-                  apiKey: "AIzaSyA3LPVD0nRfMuEoQSCs5HiwztRmlWqw--c",
-                  authDomain: "checkinme-305e8.firebaseapp.com",
-                  projectId: "checkinme-305e8",
-                  storageBucket: "checkinme-305e8.firebasestorage.app",
-                  messagingSenderId: "702908288371",
-                  appId: "1:702908288371:web:bb067e1a238bd1e5288906",
-                  measurementId: "G-ZFFWRTD6QE"
-                };
-                
-                // ពិនិត្យមើល App ID ពី Global variable ម្ដងទៀត
-                if (typeof __app_id !== 'undefined' && __app_id) {
-                    appId = __app_id;
-                } else {
-                    appId = firebaseConfig.projectId; // ប្រើ projectId បើ __app_id មិនមាន
-                }
-                
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                // បើក Debug Log សម្រាប់ Firestore
-                setLogLevel('debug');
-
-                // តាមដានស្ថានភាព Auth
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        console.log("Firebase Authenticated. User ID:", userId);
-                        // បន្ទាប់ពី Auth ដំណើរការ, ព្យាយាមទាញអ្នកប្រើប្រាស់ដែលបានជ្រើសរើស
-                        loadSelectedEmployee();
-                    } else {
-                        // បើមិនទាន់ Login, ព្យាយាម Login
-                        try {
-                            // ដោយសារយើងកំពុងប្រើ firebaseConfig ផ្ទាល់ខ្លួន (hardcoded),
-                            // យើងត្រូវតែមិនអើពើនឹង initialAuthToken របស់បរិស្ថាន
-                            // ហើយប្រើតែ signInAnonymously ប៉ុណ្ណោះ។
-                            console.log("Attempting anonymous sign-in...");
-                            await signInAnonymously(auth);
-
-                        } catch (authError) {
-                            console.error("Firebase Auth Error:", authError);
-                            // *** START: បានកែសម្រួលនៅទីនេះ ***
-                            // ចាប់យក error ជាក់លាក់
-                            if (authError.code === 'auth/configuration-not-found') {
-                                showMessage(
-                                    "បញ្ហាការកំណត់រចនាសម្ព័ន្ធ", 
-                                    "សេវាកម្ម Authentication មិនទាន់បានបើកដំណើរការទេ។ សូមចូលទៅកាន់ Firebase Console របស់អ្នក ហើយបើក 'Anonymous' sign-in។", 
-                                    "error"
-                                );
-                            } else {
-                                // Error ផ្សេងទៀត
-                                showMessage("បញ្ហា Auth", `មិនអាចភ្ជាប់ទៅសេវាកម្ម Firebase បានទេ: ${authError.message}`, "error");
-                            }
-                            // *** END: កែសម្រួលនៅទីនេះ ***
-                        }
-                    }
-                });
-            } catch (e) {
-                console.error("Firebase Init Error:", e);
-                showMessage("បញ្ហាធ្ងន់ធ្ងរ", "មិនអាចចាប់ផ្តើមកម្មវិធី Firebase បានទេ។", "error");
-                showScreen('loading'); // Stay on loading
-                screens.loading.innerHTML = '<h2 class="text-xl font-semibold text-red-700">មានបញ្ហាក្នុងការភ្ជាប់ Firebase</h2>';
-            }
-        }
-
-        // --- Google Sheet Functions ---
-
-        /**
-         * ទាញយកបញ្ជីបុគ្គលិកពី Google Sheet
-         */
-        async function fetchEmployeeList() {
-            showScreen('loading');
-            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=${SHEET_RANGE}`;
-            
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                let text = await response.text();
-                
-                // កាត់ string "google.visualization.Query.setResponse(" ចេញ
-                const jsonText = text.substring(47, text.length - 2);
-                const data = JSON.parse(jsonText);
-
-                if (!data.table || !data.table.rows) {
-                    throw new Error("Invalid Google Sheet JSON format.");
-                }
-
-                employeesList = data.table.rows
-                    .map(row => {
-                        // ត្រូវប្រាកដថា row.c (cells) មានទិន្នន័យ
-                        if (!row.c || row.c.length === 0) return null;
-                        
-                        const id = row.c[COL_INDEX.ID] ? row.c[COL_INDEX.ID].v : null;
-                        const name = row.c[COL_INDEX.NAME] ? row.c[COL_INDEX.NAME].v : null;
-                        
-                        // បើគ្មាន ID ឬ ឈ្មោះ គឺមិនយក
-                        if (!id || !name) return null;
-
-                        return {
-                            id: id,
-                            name: name,
-                            dept: row.c[COL_INDEX.DEPT] ? row.c[COL_INDEX.DEPT].v : 'N/A',
-                            photo: row.c[COL_INDEX.PHOTO] ? row.c[COL_INDEX.PHOTO].v : null,
-                        };
-                    })
-                    .filter(Boolean); // កំចាត់ចោលនូវតម្លៃ null
-
-                console.log(`Fetched ${employeesList.length} employees.`);
-                renderEmployeeList();
-                // បើមិនទាន់មានអ្នកប្រើប្រាស់បានជ្រើសរើស គឺបង្ហាញ Screen ជ្រើសរើស
-                if (!selectedEmployee) {
-                    showScreen('select');
-                }
-
-            } catch (e) {
-                console.error("Fetch Employee List Error:", e);
-                showMessage("បញ្ហាទាញទិន្នន័យ", "មិនអាចទាញបញ្ជីបុគ្គលិកពី Google Sheet បានទេ។ សូមប្រាកដថា Sheet ត្រូវបាន 'Published to the web'។", "error");
-                // បង្ហាញកន្លែងជ្រើសរើសដដែល តែប្រាប់ថាមានបញ្ហា
-                showScreen('select');
-                employeeListEl.innerHTML = `<p class="text-red-500 text-center">មិនអាចទាញទិន្នន័យបានទេ។</p>`;
-            }
-        }
-
-        /**
-         * បង្ហាញបញ្ជីបុគ្គលិកទៅលើ UI
-         * @param {string} filter 
-         */
-        function renderEmployeeList(filter = '') {
-            const lowerFilter = filter.toLowerCase();
-            const filteredList = employeesList.filter(emp => 
-                emp.name.toLowerCase().includes(lowerFilter) || 
-                emp.id.toLowerCase().includes(lowerFilter)
-            );
-
-            if (filteredList.length === 0) {
-                employeeListEl.innerHTML = `<p class="text-gray-500 text-center">មិនមានទិន្នន័យទេ។</p>`;
-                return;
-            }
-
-            employeeListEl.innerHTML = filteredList.map(emp => `
-                <div class="flex items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 cursor-pointer transition-colors" data-id="${emp.id}">
-                    <img src="${emp.photo || 'https://placehold.co/100x100/EBF4FF/76A9FA?text=User'}" 
-                         onerror="this.src='https://placehold.co/100x100/EBF4FF/76A9FA?text=User';"
-                         alt="Photo" class="w-12 h-12 rounded-full object-cover mr-4">
-                    <div class="flex-grow">
-                        <p class="font-bold text-gray-800">${emp.name}</p>
-                        <p class="text-sm text-gray-600">ID: ${emp.id} | ${emp.dept}</p>
-                    </div>
-                    <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                </div>
-            `).join('');
-        }
-
-        // --- App Logic Functions ---
-
-        /**
-         * ដំណើរការពេលអ្នកប្រើប្រាស់ចុចជ្រើសរើសឈ្មោះ
-         * @param {Event} event
-         */
-        function handleEmployeeSelect(event) {
-            const target = event.target.closest('[data-id]');
-            if (!target) return;
-
-            const empId = target.dataset.id;
-            const employee = employeesList.find(e => e.id === empId);
-            
-            if (employee) {
-                selectEmployee(employee);
-            }
-        }
-
-        /**
-         * កំណត់អ្នកប្រើប្រាស់ដែលបានជ្រើសរើស
-         * @param {object} employee
-         */
-        function selectEmployee(employee) {
+        // 13. ពេលជ្រើសរើសបុគ្គលិក
+        function handleEmployeeSelect(employee) {
             selectedEmployee = employee;
-            localStorage.setItem('selectedEmployee', JSON.stringify(employee));
-            
-            // Update Main Screen UI
-            userPhotoMain.src = employee.photo || 'https://placehold.co/100x100/EBF4FF/76A9FA?text=User';
-            userNameMain.textContent = employee.name;
-            userIdMain.textContent = `ID: ${employee.id}`;
-            userDeptMain.textContent = `ផ្នែក៖ ${employee.dept}`;
+            console.log("Selected Employee:", selectedEmployee);
 
-            // Reset status
-            statusCheckInEl.textContent = '--:--';
-            statusCheckOutEl.textContent = '--:--';
+            // បង្ហាញព័ត៌មានក្នុង Dashboard
+            userPhoto.src = selectedEmployee.photo || 'https://placehold.co/100x100/e2e8f0/cbd5e1?text=No+Photo';
+            userName.textContent = selectedEmployee.name;
+            userIdElem.textContent = `អត្តលេខ: ${selectedEmployee.id}`;
+            userDept.textContent = `ផ្នែក: ${selectedEmployee.department}`;
+
+            // បើក History listener
+            setupHistoryListener();
             
-            showScreen('main');
-            
-            // ចាប់ផ្តើមស្តាប់ទិន្នន័យវត្តមានសម្រាប់ថ្ងៃនេះ
-            attachTodayListener();
+            // បញ្ជាក់ស្ថានភាពប៊ូតុងពេលចាប់ផ្តើម
+            updateButtonStates();
+
+            // បង្ហាញ Dashboard
+            showScreen('dashboard');
         }
 
-        /**
-         * ព្យាយាមទាញអ្នកប្រើប្រាស់ដែលបានជ្រើសរើសពី localStorage
-         */
-        function loadSelectedEmployee() {
-            if (!userId) {
-                console.log("រង់ចាំ userId...");
-                return;
-            }
-
-            const storedEmployee = localStorage.getItem('selectedEmployee');
-            if (storedEmployee) {
-                console.log("រកឃើញអ្នកប្រើប្រាស់ក្នុង LocalStorage");
-                selectEmployee(JSON.parse(storedEmployee));
-            } else {
-                console.log("មិនមានអ្នកប្រើប្រាស់, កំពុងទាញបញ្ជី...");
-                // បើមិនមាន, គឺត្រូវទាញបញ្ជីឈ្មោះ
-                fetchEmployeeList();
-            }
-        }
-
-        /**
-         * ចុចប្តូរគណនី
-         */
-        function changeUser() {
+        // 14. ត្រឡប់ក្រោយ (Logout)
+        logoutButton.addEventListener('click', () => {
             selectedEmployee = null;
-            localStorage.removeItem('selectedEmployee');
-            currentListenerDate = null; // បានបន្ថែម៖ Reset ថ្ងៃរបស់ Listener
+            // បិទ History listener
+            if (unsubscribeHistory) {
+                unsubscribeHistory();
+                unsubscribeHistory = null;
+            }
+            // Reset ស្ថានភាព
+            hasCheckedInToday = false;
+            hasCheckedOutToday = false;
+            updateButtonStates(); // ហៅ Afer Reset
             
-            // បញ្ឈប់ការស្តាប់ទិន្នន័យ
-            if (todayListenerUnsubscribe) {
-                todayListenerUnsubscribe();
-                todayListenerUnsubscribe = null;
-            }
-            
-            // បើកបញ្ជីឈ្មោះឡើងវិញ (មិនបាច់ fetch ឡើងវិញទេ បើមានហើយ)
-            if (employeesList.length > 0) {
-                renderEmployeeList();
-                showScreen('select');
-            } else {
-                fetchEmployeeList(); // Fetch បើមិនទាន់មាន
-            }
-        }
+            showScreen('selection');
+        });
 
-        /**
-         * ភ្ជាប់ onSnapshot listener សម្រាប់ទិន្នន័យវត្តមានថ្ងៃនេះ
-         */
-        function attachTodayListener() {
-            // បានកែសម្រួល៖ ឥឡូវយើងមិនត្រូវការ userId សម្រាប់ path ទេ
-            if (!appId || !selectedEmployee) return;
+        // 15. ប៊ូតុង Check-in / Check-out
+        checkInBtn.addEventListener('click', () => handleCheckInOrOut('check-in'));
+        checkOutBtn.addEventListener('click', () => handleCheckInOrOut('check-out'));
 
-            const todayDate = getTodayDateString(); 
-
-            // បានកែសម្រួល៖ ពិនិត្យមើលថា Listener មិនទាន់បានភ្ជាប់សម្រាប់ថ្ងៃនេះ
-            if (currentListenerDate === todayDate) {
-                console.log(`Listener សម្រាប់ថ្ងៃ ${todayDate} បានភ្ជាប់រួចហើយ។`);
+        async function handleCheckInOrOut(type) {
+            if (!selectedEmployee || !userId) {
+                console.error("No selected employee or user ID");
                 return;
             }
 
-            // បញ្ឈប់ Listener ចាស់ (បើមាន)
-            if (todayListenerUnsubscribe) {
-                todayListenerUnsubscribe();
+            // --- VALIDATION ថ្មី ---
+            if (type === 'check-in' && hasCheckedInToday) {
+                console.warn("Already checked in today.");
+                // អ្នកអាចបន្ថែម Message Box នៅទីនេះ
+                return; // បញ្ឈប់ការដំណើរការ
             }
-
-            // *** START: បានកែសម្រួលនៅទីនេះ ***
-            // បានប្តូរ Path ពី Private (users/${userId}) ទៅ Public (public/data)
-            // ដោយប្រើ Employee ID + Date ជា Key
-            const docPath = `artifacts/${appId}/public/data/attendance/${selectedEmployee.id}_${todayDate}`;
-            // *** END: កែសម្រួលនៅទីនេះ ***
-            const docRef = doc(db, docPath);
-
-            console.log(`កំពុងស្តាប់ទិន្នន័យពី៖ ${docPath}`);
-            currentListenerDate = todayDate; // បានបន្ថែម៖ កំណត់ថ្ងៃដែល Listener កំពុងស្តាប់
-
-            todayListenerUnsubscribe = onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    console.log("Current data: ", docSnap.data());
-                    todayAttendanceData = docSnap.data();
-                    updateAttendanceUI(todayAttendanceData);
-                } else {
-                    console.log("No such document!");
-                    todayAttendanceData = {}; // Reset
-                    updateAttendanceUI({});
-                }
-            }, (error) => {
-                console.error("Snapshot Error: ", error);
-                showMessage("បញ្ហា", "មិនអាចស្តាប់ទិន្នន័យវត្តមានបានទេ។", "error");
-            });
-        }
-
-        /**
-         * Update UI ផ្អែកលើទិន្នន័យវត្តមាន
-         * @param {object} data
-         */
-        function updateAttendanceUI(data) {
-            const checkInTime = data.checkIn ? formatTime(data.checkIn) : '--:--';
-            const checkOutTime = data.checkOut ? formatTime(data.checkOut) : '--:--';
-
-            statusCheckInEl.textContent = checkInTime;
-            statusCheckOutEl.textContent = checkOutTime;
-
-            // ស្ថានភាពប៊ូតុង
-            if (data.checkIn) {
-                checkInBtn.disabled = true;
-                checkInBtn.textContent = `បានស្កេនចូល @ ${checkInTime}`;
-            } else {
-                checkInBtn.disabled = false;
-                checkInBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h5a3 3 0 013 3v1" />
-                    </svg>
-                    ស្កេនចូល (Check In)
-                `;
+            if (type === 'check-out' && hasCheckedOutToday) {
+                console.warn("Already checked out today.");
+                // អ្នកអាចបន្ថែម Message Box នៅទីនេះ
+                return; // បញ្ឈប់ការដំណើរការ
             }
+            // --- ចប់ VALIDATION ថ្មី ---
 
-            if (data.checkOut) {
-                checkOutBtn.disabled = true;
-                checkOutBtn.textContent = `បានស្កេនចេញ @ ${checkOutTime}`;
-            } else {
-                checkOutBtn.disabled = false; // ប៊ូតុង Check Out អាចចុចបានដរាបណាមិនទាន់បាន Check Out
-                checkOutBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m5 4v1a3 3 0 003 3h4a3 3 0 003-3V7a3 3 0 00-3-3h-4a3 3 0 00-3 3v1" />
-                    </svg>
-                    ស្កេនចេញ (Check Out)
-                `;
-            }
-        }
-
-        /**
-         * ដំណើរការពេលចុច Check In
-         */
-        async function handleCheckIn() {
-            if (todayAttendanceData.checkIn) {
-                showMessage("កំណត់ចំណាំ", "អ្នកបានស្កេនចូលរួចហើយ។", "error");
-                return;
-            }
-
-            // *** START: បានកែសម្រួលនៅទីនេះ (បន្ថែម Lock) ***
-            if (isProcessing) {
-                console.log("កំពុងដំណើរការ សូមរង់ចាំ...");
-                return;
-            }
-            isProcessing = true;
-            // *** END: បានកែសម្រួលនៅទីនេះ ***
-
+            // បិទប៊ូតុងបណ្ដោះអាសន្ន (នឹងត្រូវបានបើក/បិទ ដោយ onSnapshot)
             checkInBtn.disabled = true;
-            checkInBtn.textContent = "កំពុងដំណើរការ...";
+            checkOutBtn.disabled = true;
 
-            const todayDate = getTodayDateString();
-            // *** START: បានកែសម្រួលនៅទីនេះ ***
-            // បានប្តូរ Path ទៅ Public ឱ្យដូច attachTodayListener
-            const docPath = `artifacts/${appId}/public/data/attendance/${selectedEmployee.id}_${todayDate}`;
-            const docRef = doc(db, docPath);
-            // *** END: កែសម្រួលនៅទីនេះ ***
-            const now = new Date().toISOString();
+            const now = new Date();
+            const today = now.toISOString().split('T')[0]; // យកតែ 'YYYY-MM-DD'
 
-            const dataToSet = {
+            const record = {
                 employeeId: selectedEmployee.id,
                 employeeName: selectedEmployee.name,
-                employeeDept: selectedEmployee.dept,
-                checkIn: now,
-                checkOut: null // កំណត់ checkOut ទៅ null
+                type: type,
+                timestamp: Timestamp.fromDate(now), // ប្រើ Firebase Timestamp
+                day: today // សម្រាប់ងាយស្រួល Query
             };
 
             try {
-                // ប្រើ setDoc ជាមួយ merge: true ដើម្បីបង្កើតថ្មី ឬ update
-                await setDoc(docRef, dataToSet, { merge: true });
-
-                // *** START: បានកែសម្រួលនៅទីនេះ (Optimistic Update) ***
-                // អាប់ដេត state នៅក្នុងកម្មវិធីភ្លាមៗ
-                todayAttendanceData = dataToSet;
-                updateAttendanceUI(todayAttendanceData); // Update UI ភ្លាម
-                // *** END: បានកែសម្រួលនៅទីនេះ ***
-
-                showMessage("ជោគជ័យ!", `បានស្កេនចូលនៅម៉ោង ${formatTime(now)}`);
-            } catch (e) {
-                console.error("Check In Error: ", e);
-                showMessage("បញ្ហា", "មិនអាចរក្សាទុកទិន្នន័យស្កេនចូលបានទេ។", "error");
-
-                // *** START: បានកែសម្រួលនៅទីនេះ (Rollback UI) ***
-                // បើបរាជ័យ, update UI ទៅស្ថានភាពដើមវិញ
-                updateAttendanceUI(todayAttendanceData);
-                // *** END: បានកែសម្រួលនៅទីនេះ ***
+                // រក្សាទុកក្នុង Private Collection របស់ User
+                // --- កែសម្រួល ---
+                // ប្តូរពី Private Collection (users/{userId}) ទៅ Public Collection
+                // ដើម្បីឱ្យទិន្នន័យតាមគណនីបុគ្គលិក (employeeId) មិនមែនតាមឧបករណ៍ (userId)
+                const collectionPath = `artifacts/${appId}/public/data/employee_check_ins`;
+                const docRef = await addDoc(collection(db, collectionPath), record);
+                console.log("Document written with ID: ", docRef.id);
+            } catch (error) {
+                console.error("Error adding document: ", error);
             } finally {
-                // *** START: បានកែសម្រួលនៅទីនេះ (Release Lock) ***
-                isProcessing = false; // ដោះសោរវិញ
-                // *** END: បានកែសម្រួលនៅទីនេះ ***
+                // បើកប៊ូតុងវិញ
+                checkInBtn.disabled = false;
+                checkOutBtn.disabled = false;
             }
         }
 
-        /**
-         * ដំណើរការពេលចុច Check Out
-         */
-        async function handleCheckOut() {
-            if (!todayAttendanceData.checkIn) {
-                showMessage("បញ្ហា", "អ្នកត្រូវស្កេនចូលជាមុនសិន ទើបអាចស្កេនចេញបាន។", "error");
-                return;
-            }
-            if (todayAttendanceData.checkOut) {
-                showMessage("កំណត់ចំណាំ", "អ្នកបានស្កេនចេញរួចហើយ។", "error");
-                return;
+        // 16. បង្កើត History Listener (Real-time)
+        function setupHistoryListener() {
+            // បិទ Listener ចាស់ (ប្រសិនបើមាន)
+            if (unsubscribeHistory) {
+                unsubscribeHistory();
             }
 
-            // *** START: បានកែសម្រួលនៅទីនេះ (បន្ថែម Lock) ***
-            if (isProcessing) {
-                console.log("កំពុងដំណើរការ សូមរង់ចាំ...");
-                return;
-            }
-            isProcessing = true;
-            // *** END: បានកែសម្រួលនៅទីនេះ ***
+            if (!userId || !selectedEmployee) return;
 
-            checkOutBtn.disabled = true;
-            checkOutBtn.textContent = "កំពុងដំណើរការ...";
+            const today = new Date().toISOString().split('T')[0];
+            
+            // --- កែសម្រួល ---
+            // ប្តូរទៅ Public Collection វិញ
+            const collectionPath = `artifacts/${appId}/public/data/employee_check_ins`;
 
-            const todayDate = getTodayDateString();
-            // *** START: បានកែសម្រួលនៅទីនេះ ***
-            // បានប្តូរ Path ទៅ Public ឱ្យដូច attachTodayListener
-            const docPath = `artifacts/${appId}/public/data/attendance/${selectedEmployee.id}_${todayDate}`;
-            const docRef = doc(db, docPath);
-            // *** END: កែសម្រួលនៅទីនេះ ***
-            const now = new Date().toISOString();
+            // បង្កើត Query
+            // --- កែសម្រួល ---
+            // ត្រូវតែ Query តាម employeeId ដើម្បីកុំឱ្យទាញទិន្នន័យបុគ្គលិកផ្សេងទៀត
+            // ពេលប្រើ Public Collection
+            const q = query(collection(db, collectionPath), where("employeeId", "==", selectedEmployee.id));
 
-            const dataToUpdate = {
-                checkOut: now
-            };
+            unsubscribeHistory = onSnapshot(q, (snapshot) => {
+                const allRecords = [];
+                snapshot.forEach((doc) => {
+                    allRecords.push(doc.data());
+                });
 
-            try {
-                // ប្រើ updateDoc ព្រោះយើងដឹងថា document មានហើយ
-                await updateDoc(docRef, dataToUpdate);
+                // Filter យកតែថ្ងៃនេះ និង Employee ដែលបានជ្រើសរើស
+                // --- កែសម្រួល ---
+                // ឥឡូវ Query បាន Filter យក employeeId រួចហើយ (ពី where)
+                // យើងគ្រាន់តែ Filter យកថ្ងៃនេះ (day) នៅក្នុង JavaScript
+                const todayRecords = allRecords
+                    .filter(r => r.day === today)
+                    .sort((a, b) => a.timestamp.seconds - b.timestamp.seconds); // សម្គាល់: ត្រូវប្រាកដថា sort ត្រូវ
+                
+                // --- LOGIC ថ្មី សម្រាប់ត្រួតពិនិត្យស្ថានភាព ---
+                // Reset flags ជាមុនសិន
+                hasCheckedInToday = false;
+                hasCheckedOutToday = false;
 
-                // *** START: បានកែសម្រួលនៅទីនេះ (Optimistic Update) ***
-                todayAttendanceData.checkOut = now;
-                updateAttendanceUI(todayAttendanceData);
-                // *** END: បានកែសម្រួលនៅទីនេះ ***
+                // ពិនិត្យមើល Records របស់ថ្ងៃនេះ
+                for (const record of todayRecords) {
+                    if (record.type === 'check-in') {
+                        hasCheckedInToday = true;
+                    }
+                    if (record.type === 'check-out') {
+                        hasCheckedOutToday = true;
+                    }
+                }
+                // --- ចប់ LOGIC ថ្មី ---
 
-                showMessage("ជោគជ័យ!", `បានស្កេនចេញនៅម៉ោង ${formatTime(now)}`);
-            } catch (e) {
-                console.error("Check Out Error: ", e);
-                showMessage("បញ្ហា", "មិនអាចរក្សាទុកទិន្នន័យស្កេនចេញបានទេ។", "error");
+                renderHistory(todayRecords);
+                updateButtonStates(); // ធ្វើបច្ចុប្បន្នភាពប៊ូតុង បន្ទាប់ពីពិនិត្យស្ថានភាព
 
-                // *** START: បានកែសម្រួលនៅទីនេះ (Rollback UI) ***
-                updateAttendanceUI(todayAttendanceData);
-            } finally {
-                // *** START: បានកែសម្រួលនៅទីនេះ (Release Lock) ***
-                isProcessing = false; // ដោះសោរវិញ
-                // *** END: បានកែសម្រួលនៅទីនេះ ***
-            }
+            }, (error) => {
+                console.error("Error with history snapshot: ", error);
+                historyList.innerHTML = `<p class="text-red-500">Error loading history.</p>`;
+            });
         }
 
+        // 17. Render ប្រវត្តិ
+        function renderHistory(records) {
+            historyList.innerHTML = ''; // សម្អាត
+            if (records.length === 0) {
+                historyList.innerHTML = '<p class="text-gray-500 text-center">មិនទាន់មានទិន្នន័យសម្រាប់ថ្ងៃនេះ</p>';
+                return;
+            }
 
-        // --- Event Listeners ---
-        searchInputEl.addEventListener('input', (e) => {
-            renderEmployeeList(e.target.value);
-        });
+            records.forEach(record => {
+                const recordDiv = document.createElement('div');
+                recordDiv.className = 'flex justify-between items-center p-2 bg-white rounded border';
+                
+                const typeText = record.type === 'check-in' ? 'ចូល' : 'ចេញ';
+                const typeColor = record.type === 'check-in' ? 'text-green-600' : 'text-red-600';
+                
+                // បំប្លែង Timestamp ទៅជាម៉ោង
+                const time = record.timestamp.toDate().toLocaleTimeString('en-US', { hour12: false });
 
-        employeeListEl.addEventListener('click', handleEmployeeSelect);
-        changeUserBtn.addEventListener('click', changeUser);
-        checkInBtn.addEventListener('click', handleCheckIn);
-        checkOutBtn.addEventListener('click', handleCheckOut);
+                recordDiv.innerHTML = `
+                    <span class="font-medium ${typeColor}">
+                        <strong class="font-bold">[${typeText}]</strong>
+                    </span>
+                    <span class="text-gray-700 font-mono">${time}</span>
+                `;
+                historyList.appendChild(recordDiv);
+            });
+        }
 
-        // --- App Initialization ---
-        document.addEventListener('DOMContentLoaded', () => {
-            showScreen('loading');
-            initFirebase();
-            setInterval(updateClock, 1000); // Update នាឡិកា
-            updateClock(); // Update លើកដំបូង
-        });
+        // 18. អនុគមន៍ថ្មី សម្រាប់ធ្វើបច្ចុប្បន្នភាពប៊ូតុង
+        function updateButtonStates() {
+            // 1. កំណត់ស្ថានភាពប៊ូតុង Check-in
+            if (hasCheckedInToday) {
+                checkInBtn.disabled = true;
+                checkInBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                checkInBtn.classList.add('bg-gray-400', 'cursor-not-allowed', 'opacity-70');
+                checkInBtn.querySelector('span').textContent = 'បានស្កេនចូល';
+            } else {
+                checkInBtn.disabled = false;
+                checkInBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+                checkInBtn.classList.remove('bg-gray-400', 'cursor-not-allowed', 'opacity-70');
+                checkInBtn.querySelector('span').textContent = 'ចុះឈ្មោះចូល';
+            }
+
+            // 2. កំណត់ស្ថានភាពប៊ូតុង Check-out
+            if (hasCheckedOutToday) {
+                checkOutBtn.disabled = true;
+                checkOutBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                checkOutBtn.classList.add('bg-gray-400', 'cursor-not-allowed', 'opacity-70');
+                checkOutBtn.querySelector('span').textContent = 'បានស្កេនចេញ';
+            } else {
+                checkOutBtn.disabled = false;
+                checkOutBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+                checkOutBtn.classList.remove('bg-gray-400', 'cursor-not-allowed', 'opacity-70');
+                checkOutBtn.querySelector('span').textContent = 'ចុះឈ្មោះចេញ';
+            }
+        }
 
     </script>
 </body>
 </html>
-
 
 
