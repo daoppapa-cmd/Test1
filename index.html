@@ -503,37 +503,33 @@
             if (!userId || !selectedEmployee) return;
 
             // --- ការកែសម្រួលសម្រាប់ Performance ---
-            // const today = getLocalISODate(); // (*** ត្រូវដកចេញពីទីនេះ ***)
+            const today = getLocalISODate(); // (*** យកមកដាក់ទីនេះវិញ ***)
             const collectionPath = `artifacts/${appId}/public/data/employee_check_ins`;
 
             // 2. បង្កើត Query ឱ្យលឿន ដោយ Filter ទាំង employeeId និង day នៅក្នុង Database
             // នេះទាមទារ Index នៅក្នុង Firestore
-            // console.log(`Setting up listener for employeeId: ${selectedEmployee.id} and day: ${today}`);
-            // (*** កែសម្រួល Query ***)
-            // ដក where("day", "==", today) ចេញ ដើម្បីជួសជុលបញ្ហា Sync
-            // និងដើម្បីមិនឱ្យទាមទារ Composite Index
-            console.log(`Setting up listener for employeeId: ${selectedEmployee.id}`);
+            console.log(`Setting up listener for employeeId: ${selectedEmployee.id} and day: ${today}`);
+            // (*** ត្រឡប់មកប្រើ Query លឿនវិញ ***)
             const q = query(
                 collection(db, collectionPath), 
-                where("employeeId", "==", selectedEmployee.id)
-                // where("day", "==", today) // *** ដកចេញ ***
+                where("employeeId", "==", selectedEmployee.id),
+                where("day", "==", today) // *** ដាក់ចូលវិញ ***
             );
 
             unsubscribeHistory = onSnapshot(q, (snapshot) => {
                 
-                // (*** ត្រូវបន្ថែមនៅទីនេះ ***)
-                // គណនា "ថ្ងៃនេះ" (today) រាល់ពេលទិន្នន័យថ្មីចូល
-                const today = getLocalISODate();
+                // (*** ដកចេញពីទីនេះវិញ ***)
+                // const today = getLocalISODate(); // ត្រូវย้ายឡើងលើ
 
                 const allRecords = [];
                 snapshot.forEach((doc) => {
                     allRecords.push(doc.data());
                 });
                 
-                // (*** កែសម្រួល Logic ***)
-                // Filter រកទិន្នន័យ "ថ្ងៃនេះ" នៅក្នុង JavaScript (Client-side)
+                // (*** ត្រឡប់មកប្រើ Logic ដើម ***)
+                // ឥឡូវ Query ត្រឹមត្រូវហើយ មិនបាច់ Filter ក្នុង Client ទៀតទេ
                 const todayRecords = allRecords
-                    .filter(record => record.day === today) // *** បន្ថែម Filter ***
+                    // .filter(record => record.day === today) // *** ដកចេញ ***
                     .sort((a, b) => a.timestamp.seconds - b.timestamp.seconds); 
                 
                 // --- LOGIC សម្រាប់ត្រួតពិនិត្យស្ថានភាព ---
@@ -554,17 +550,31 @@
 
             }, (error) => {
                 console.error("Error with history snapshot: ", error);
-                // (*** ដក Error ចាស់ចេញ ***)
-                // ដោយសារ Query ថ្មីមិនត្រូវការ Index, យើងមិនបាច់បង្ហាញ Error នេះទៀតទេ
-                /*
+                
+                // (*** កែសម្រួល Error ឱ្យច្បាស់ ***)
+                // ផ្ដល់ការណែនាំច្បាស់លាស់ ជំនួស Link ដែល Error
                 if (error.code === 'failed-precondition') {
-                    historyList.innerHTML = `<p class="text-red-500 p-2 text-sm"><b>Error:</b> Query ត្រូវការ Index។ សូមពិនិត្យ Console (F12) ដើម្បីមើល Link បង្កើត Index នៅក្នុង Firebase។</p>`;
-                    console.error("FIREBASE INDEXING ERROR: Please click the link in this error message to create the required Firestore index:", error.message);
+                    const errorHtml = `
+                        <div class="text-left p-2 text-sm text-red-800 bg-red-100 rounded-lg">
+                            <p class="font-bold">Error: ត្រូវការបង្កើត Index ក្នុង Firebase</p>
+                            <p class="mt-2">សូមចូលទៅកាន់ Firebase Project របស់អ្នក៖</p>
+                            <ol class="list-decimal list-inside mt-1 pl-2">
+                                <li>Cloud Firestore -> Indexes</li>
+                                <li>ចុច "Start query" (ឬ Add composite index)</li>
+                                <li>Collection ID: <strong>employee_check_ins</strong></li>
+                                <li>Field 1: <strong>employeeId</strong> (Ascending)</li>
+                                <li>Field 2: <strong>day</strong> (Ascending)</li>
+                                <li>Scope: <strong>Collection</strong></li>
+                                <li>ចុច "Create Index" (រង់ចាំ 2-3 នាទី)</li>
+                            </ol>
+                            <p class="mt-2">បន្ទាប់មករក Reload កម្មវិធីនេះ។</p>
+                        </div>
+                    `;
+                    historyList.innerHTML = errorHtml;
+                    console.error("FIREBASE INDEXING ERROR: The query requires a composite index. Please create it manually in the Firebase console.", error.message);
                 } else {
-                    historyList.innerHTML = `<p class="text-red-500">Error loading history.</p>`;
+                    historyList.innerHTML = `<p class="text-red-500">Error loading history: ${error.message}</p>`;
                 }
-                */
-                historyList.innerHTML = `<p class="text-red-500">Error loading history: ${error.message}</p>`;
             });
         }
 
@@ -639,6 +649,7 @@
     </script>
 </body>
 </html>
+
 
 
 
