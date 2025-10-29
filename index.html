@@ -157,6 +157,7 @@
         let todayListenerUnsubscribe = null;
         let todayAttendanceData = {};
         let currentListenerDate = null; // បានបន្ថែម៖ តាមដានថ្ងៃដែល Listener កំពុងស្តាប់
+        let isProcessing = false; // បានបន្ថែម៖ ទង់សម្រាប់ទប់ស្កាត់ការចុចซ้ำ
 
         // Google Sheet Config (ពីអ្នកប្រើប្រាស់)
         const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
@@ -627,6 +628,14 @@
                 return;
             }
 
+            // *** START: បានកែសម្រួលនៅទីនេះ (បន្ថែម Lock) ***
+            if (isProcessing) {
+                console.log("កំពុងដំណើរការ សូមរង់ចាំ...");
+                return;
+            }
+            isProcessing = true;
+            // *** END: បានកែសម្រួលនៅទីនេះ ***
+
             checkInBtn.disabled = true;
             checkInBtn.textContent = "កំពុងដំណើរការ...";
 
@@ -649,11 +658,26 @@
             try {
                 // ប្រើ setDoc ជាមួយ merge: true ដើម្បីបង្កើតថ្មី ឬ update
                 await setDoc(docRef, dataToSet, { merge: true });
+
+                // *** START: បានកែសម្រួលនៅទីនេះ (Optimistic Update) ***
+                // អាប់ដេត state នៅក្នុងកម្មវិធីភ្លាមៗ
+                todayAttendanceData = dataToSet;
+                updateAttendanceUI(todayAttendanceData); // Update UI ភ្លាម
+                // *** END: បានកែសម្រួលនៅទីនេះ ***
+
                 showMessage("ជោគជ័យ!", `បានស្កេនចូលនៅម៉ោង ${formatTime(now)}`);
             } catch (e) {
                 console.error("Check In Error: ", e);
                 showMessage("បញ្ហា", "មិនអាចរក្សាទុកទិន្នន័យស្កេនចូលបានទេ។", "error");
-                // UI នឹង update វិញដោយ onSnapshot
+
+                // *** START: បានកែសម្រួលនៅទីនេះ (Rollback UI) ***
+                // បើបរាជ័យ, update UI ទៅស្ថានភាពដើមវិញ
+                updateAttendanceUI(todayAttendanceData);
+                // *** END: បានកែសម្រួលនៅទីនេះ ***
+            } finally {
+                // *** START: បានកែសម្រួលនៅទីនេះ (Release Lock) ***
+                isProcessing = false; // ដោះសោរវិញ
+                // *** END: បានកែសម្រួលនៅទីនេះ ***
             }
         }
 
@@ -669,6 +693,14 @@
                 showMessage("កំណត់ចំណាំ", "អ្នកបានស្កេនចេញរួចហើយ។", "error");
                 return;
             }
+
+            // *** START: បានកែសម្រួលនៅទីនេះ (បន្ថែម Lock) ***
+            if (isProcessing) {
+                console.log("កំពុងដំណើរការ សូមរង់ចាំ...");
+                return;
+            }
+            isProcessing = true;
+            // *** END: បានកែសម្រួលនៅទីនេះ ***
 
             checkOutBtn.disabled = true;
             checkOutBtn.textContent = "កំពុងដំណើរការ...";
@@ -688,11 +720,23 @@
             try {
                 // ប្រើ updateDoc ព្រោះយើងដឹងថា document មានហើយ
                 await updateDoc(docRef, dataToUpdate);
+
+                // *** START: បានកែសម្រួលនៅទីនេះ (Optimistic Update) ***
+                todayAttendanceData.checkOut = now;
+                updateAttendanceUI(todayAttendanceData);
+                // *** END: បានកែសម្រួលនៅទីនេះ ***
+
                 showMessage("ជោគជ័យ!", `បានស្កេនចេញនៅម៉ោង ${formatTime(now)}`);
             } catch (e) {
                 console.error("Check Out Error: ", e);
                 showMessage("បញ្ហា", "មិនអាចរក្សាទុកទិន្នន័យស្កេនចេញបានទេ។", "error");
-                // UI នឹង update វិញដោយ onSnapshot
+
+                // *** START: បានកែសម្រួលនៅទីនេះ (Rollback UI) ***
+                updateAttendanceUI(todayAttendanceData);
+            } finally {
+                // *** START: បានកែសម្រួលនៅទីនេះ (Release Lock) ***
+                isProcessing = false; // ដោះសោរវិញ
+                // *** END: បានកែសម្រួលនៅទីនេះ ***
             }
         }
 
@@ -718,5 +762,6 @@
     </script>
 </body>
 </html>
+
 
 
