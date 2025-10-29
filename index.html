@@ -172,7 +172,19 @@
 
         // --- Firebase Configuration ---
         // ប្រើអថេរដែលបានផ្តល់ដោយបរិស្ថាន (environment)
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        // const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        
+        // FIX: ប្រើ config ដែលអ្នកប្រើបានផ្តល់ឱ្យដោយផ្ទាល់
+        const firebaseConfig = {
+            apiKey: "AIzaSyCgc3fq9mDHMCjTRRHD3BPBL31JkKZgXFc",
+            authDomain: "checkme-10e18.firebaseapp.com",
+            projectId: "checkme-10e18",
+            storageBucket: "checkme-10e18.firebasestorage.app",
+            messagingSenderId: "1030447497157",
+            appId: "1:1030447497157:web:9792086df1e864559fd5ac",
+            measurementId: "G-QCJ2JH4WH6"
+        };
+        
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         // --- DOM Elements ---
@@ -654,4 +666,5 @@
     </script>
 </body>
 </html>
+
 
