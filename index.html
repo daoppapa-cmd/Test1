@@ -341,12 +341,18 @@
 
                 const rows = data.table.rows;
                 // Mapping ទិន្នន័យ (E=c[0], L=c[7], R=c[13], AA=c[22])
-                allEmployees = rows.map(row => ({
-                    id: row.c[0]?.v || 'N/A', // Column E
-                    name: row.c[7]?.v || 'Unknown Name', // Column L
-                    department: row.c[13]?.v || 'N/A', // Column R
-                    photo: row.c[22]?.v || null // Column AA
-                })).filter(emp => emp.id !== 'N/A' && emp.name !== 'Unknown Name'); // តម្រងយកតែអ្នកមានទិន្នន័យ
+                allEmployees = rows.map(row => {
+                    // *** FIX: បង្ខំឱ្យ ID ទៅជា String ***
+                    const idValue = row.c[0]?.v;
+                    const idAsString = idValue !== null && idValue !== undefined ? String(idValue) : 'N/A';
+
+                    return {
+                        id: idAsString, // Column E (Forced as String)
+                        name: row.c[7]?.v || 'Unknown Name', // Column L
+                        department: row.c[13]?.v || 'N/A', // Column R
+                        photo: row.c[22]?.v || null // Column AA
+                    };
+                }).filter(emp => emp.id !== 'N/A' && emp.name !== 'Unknown Name'); // តម្រងយកតែអ្នកមានទិន្នន័យ
                 
                 console.log(`Fetched ${allEmployees.length} employees.`);
                 renderEmployeeList(allEmployees);
@@ -482,7 +488,7 @@
             const today = getLocalISODate(); // យកតែ 'YYYY-MM-DD' (Local Time)
 
             const record = {
-                employeeId: selectedEmployee.id,
+                employeeId: selectedEmployee.id, // ID នេះ ឥឡូវជា String ជានិច្ច
                 employeeName: selectedEmployee.name,
                 type: type,
                 timestamp: Timestamp.fromDate(now), // ប្រើ Firebase Timestamp
@@ -516,11 +522,15 @@
 
             // 2. បង្កើត Query ឱ្យលឿន ដោយ Filter ទាំង employeeId និង day នៅក្នុង Database
             // នេះទាមទារ Index នៅក្នុង Firestore
-            console.log(`Setting up listener for employeeId: ${selectedEmployee.id} and day: ${today}`);
+            
+            // *** FIX: ធានាថា ID ដែលប្រើក្នុង Query ជា String ***
+            const employeeIdString = String(selectedEmployee.id);
+            
+            console.log(`Setting up listener for employeeId: ${employeeIdString} (type: ${typeof employeeIdString}) and day: ${today}`);
 
             const q = query(
                 collection(db, collectionPath), 
-                where("employeeId", "==", selectedEmployee.id),
+                where("employeeId", "==", employeeIdString), // ប្រើ String ជានិច្ច
                 where("day", "==", today) 
             );
 
@@ -551,6 +561,8 @@
                 updateButtonStates(); // ធ្វើបច្ចុប្បន្នភាពប៊ូតុង បន្ទាប់ពីពិនិត្យស្ថានភាព
 
             }, (error) => {
+                
+                // បង្ហាញផ្ទាំង Error នៅពេល Query បរាជ័យ (ទោះ Error 400 ក៏ដោយ)
                 console.error("Error with history snapshot: ", error);
                 
                 // --- បង្កើត Link ស្វ័យប្រវត្តិ ---
@@ -565,7 +577,7 @@
                 const errorHtml = `
                     <div class="text-left p-2 text-sm text-red-800 bg-red-100 rounded-lg">
                         <p class="font-bold">Error: រកមិនឃើញទិន្នន័យ (${error.message})</p>
-                        <p class="mt-2">បញ្ហានេះ ភាគច្រើនបណ្ដាលមកពី Index មិនទាន់បានបង្កើត។</p>
+                        <p class="mt-2">បញ្ហានេះ ភាគច្រើនបណ្ដាលមកពី Index មិនទាន់បានបង្កើត ឬ ប្រភេទទិន្នន័យមិនត្រូវគ្នា។</p>
                         
                         <p class="mt-3 mb-3">
                             <a href="${indexCreationUrl}" target="_blank" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
@@ -587,7 +599,7 @@
                     </div>
                 `;
                 historyList.innerHTML = errorHtml;
-                console.error("FIREBASE QUERY ERROR (likely missing index):", error.message);
+                console.error("FIREBASE QUERY ERROR (likely missing index or data type mismatch):", error.message);
                 
             });
         }
