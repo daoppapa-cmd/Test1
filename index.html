@@ -410,7 +410,11 @@
             userName.textContent = selectedEmployee.name;
             userIdElem.textContent = `អត្តលេខ: ${selectedEmployee.id}`;
             userDept.textContent = `ផ្នែក: ${selectedEmployee.department}`;
-
+            
+            // (*** ការកែប្រែចុងក្រោយ ***)
+            // បង្ហាញ "Loading..." ភ្លាមៗ មុនពេល Query
+            historyList.innerHTML = '<p class="text-gray-500 text-center">កំពុងទាញយកប្រវត្តិ...</p>';
+            
             // បើក History listener
             setupHistoryListener();
             
@@ -433,6 +437,10 @@
             hasCheckedInToday = false;
             hasCheckedOutToday = false;
             updateButtonStates(); // ហៅ Afer Reset
+            
+            // (*** ការកែប្រែចុងក្រោយ ***)
+            // សម្អាត history list ពេល Logout
+            historyList.innerHTML = '<p class="text-gray-500 text-center">មិនទាន់មានទិន្នន័យ</p>';
             
             showScreen('selection');
         });
@@ -503,33 +511,27 @@
             if (!userId || !selectedEmployee) return;
 
             // --- ការកែសម្រួលសម្រាប់ Performance ---
-            const today = getLocalISODate(); // (*** យកមកដាក់ទីនេះវិញ ***)
+            const today = getLocalISODate(); 
             const collectionPath = `artifacts/${appId}/public/data/employee_check_ins`;
 
             // 2. បង្កើត Query ឱ្យលឿន ដោយ Filter ទាំង employeeId និង day នៅក្នុង Database
             // នេះទាមទារ Index នៅក្នុង Firestore
             console.log(`Setting up listener for employeeId: ${selectedEmployee.id} and day: ${today}`);
-            // (*** ត្រឡប់មកប្រើ Query លឿនវិញ ***)
+
             const q = query(
                 collection(db, collectionPath), 
                 where("employeeId", "==", selectedEmployee.id),
-                where("day", "==", today) // *** ដាក់ចូលវិញ ***
+                where("day", "==", today) 
             );
 
             unsubscribeHistory = onSnapshot(q, (snapshot) => {
                 
-                // (*** ដកចេញពីទីនេះវិញ ***)
-                // const today = getLocalISODate(); // ត្រូវย้ายឡើងលើ
-
                 const allRecords = [];
                 snapshot.forEach((doc) => {
                     allRecords.push(doc.data());
                 });
                 
-                // (*** ត្រឡប់មកប្រើ Logic ដើម ***)
-                // ឥឡូវ Query ត្រឹមត្រូវហើយ មិនបាច់ Filter ក្នុង Client ទៀតទេ
                 const todayRecords = allRecords
-                    // .filter(record => record.day === today) // *** ដកចេញ ***
                     .sort((a, b) => a.timestamp.seconds - b.timestamp.seconds); 
                 
                 // --- LOGIC សម្រាប់ត្រួតពិនិត្យស្ថានភាព ---
@@ -551,13 +553,8 @@
             }, (error) => {
                 console.error("Error with history snapshot: ", error);
                 
-                // (*** ការកែសម្រួលចុងក្រោយ: បង្ហាញ Link ជានិច្ចពេលមាន Error ***)
-                // ដោយសារ Error 400 កើតឡើងជំនួស 'failed-precondition'
-                // យើងសន្មត់ថា Error ណាក៏ដោយនៅត្រង់ Query នេះ គឺបណ្ដាលមកពី Index
-                
-                // --- (ការកែប្រែ) បង្កើត Link ស្វ័យប្រវត្តិ ---
+                // --- បង្កើត Link ស្វ័យប្រវត្តិ ---
                 const projectId = finalFirebaseConfig.projectId;
-                // យើងយកតែឈ្មោះ Collection សុទ្ធ ព្រោះ Link មិនត្រូវការ Path ពេញ
                 const collectionIdOnly = "employee_check_ins";
                 const field1 = 'employeeId';
                 const field2 = 'day';
@@ -570,13 +567,11 @@
                         <p class="font-bold">Error: រកមិនឃើញទិន្នន័យ (${error.message})</p>
                         <p class="mt-2">បញ្ហានេះ ភាគច្រើនបណ្ដាលមកពី Index មិនទាន់បានបង្កើត។</p>
                         
-                        <!-- (ការកែប្រែ) បន្ថែមប៊ូតុង Link -->
                         <p class="mt-3 mb-3">
                             <a href="${indexCreationUrl}" target="_blank" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
                                 ចុចទីនេះដើម្បីបង្កើត Index ដោយស្វ័យប្រវត្តិ
                             </a>
                         </p>
-                        <!-- បញ្ចប់ការកែប្រែ -->
 
                         <p class="mt-2">បន្ទាប់ពីចុច Link ហើយ សូមរង់ចាំ Index នោះ "Enable" (2-3 នាទី) រួច Reload កម្មវិធីនេះ។</p>
                         
