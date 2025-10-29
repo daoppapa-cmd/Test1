@@ -10,7 +10,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap');
         body {
             font-family: 'Kantumruy Pro', sans-serif;
-            -webkit-tap-highlight-color: transparent; /* បំបាត់ការប្លីកពេលចុចលើទូរស័ព្ទ */
+            -webkit-tap-highlight-color: transparent; /* បំបាត់ការប្លីកពេលចុចលើទូរស័ព
+
+ទ */
         }
         /* បង្ហាញ/លាក់អេក្រង់ */
         .hidden {
@@ -154,6 +156,7 @@
         let employeesList = [];
         let todayListenerUnsubscribe = null;
         let todayAttendanceData = {};
+        let currentListenerDate = null; // បានបន្ថែម៖ តាមដានថ្ងៃដែល Listener កំពុងស្តាប់
 
         // Google Sheet Config (ពីអ្នកប្រើប្រាស់)
         const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
@@ -265,6 +268,13 @@
                 month: 'long', 
                 day: 'numeric' 
             });
+            
+            // បានបន្ថែម៖ ត្រួតពិនិត្យមើលការផ្លាស់ប្តូរថ្ងៃ (ឆ្លងថ្ងៃ)
+            const todayDate = getTodayDateString();
+            if (todayDate !== currentListenerDate && selectedEmployee && userId) {
+                console.log("ថ្ងៃបានផ្លាស់ប្តូរ។ កំពុងភ្ជាប់ Listener ឡើងវិញ...");
+                attachTodayListener();
+            }
         }
 
         // --- Firebase Functions ---
@@ -275,8 +285,26 @@
         async function initFirebase() {
             try {
                 // យក Config ពី Global variables
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'checkinme-305e8'; // ប្រើ projectId ជា fallback
+
+                // ប្រើ Firebase Config ដែលអ្នកប្រើប្រាស់បានផ្ដល់ឲ្យ
+                const firebaseConfig = {
+                  apiKey: "AIzaSyA3LPVD0nRfMuEoQSCs5HiwztRmlWqw--c",
+                  authDomain: "checkinme-305e8.firebaseapp.com",
+                  projectId: "checkinme-305e8",
+                  storageBucket: "checkinme-305e8.firebasestorage.app",
+                  messagingSenderId: "702908288371",
+                  appId: "1:702908288371:web:bb067e1a238bd1e5288906",
+                  measurementId: "G-ZFFWRTD6QE"
+                };
+                
+                // ពិនិត្យមើល App ID ពី Global variable ម្ដងទៀត
+                if (typeof __app_id !== 'undefined' && __app_id) {
+                    appId = __app_id;
+                } else {
+                    appId = firebaseConfig.projectId; // ប្រើ projectId បើ __app_id មិនមាន
+                }
+                
                 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
                 const app = initializeApp(firebaseConfig);
@@ -296,14 +324,27 @@
                     } else {
                         // បើមិនទាន់ Login, ព្យាយាម Login
                         try {
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
+                            // ដោយសារយើងកំពុងប្រើ firebaseConfig ផ្ទាល់ខ្លួន (hardcoded),
+                            // យើងត្រូវតែមិនអើពើនឹង initialAuthToken របស់បរិស្ថាន
+                            // ហើយប្រើតែ signInAnonymously ប៉ុណ្ណោះ។
+                            console.log("Attempting anonymous sign-in...");
+                            await signInAnonymously(auth);
+
                         } catch (authError) {
                             console.error("Firebase Auth Error:", authError);
-                            showMessage("បញ្ហា Auth", "មិនអាចភ្ជាប់ទៅសេវាកម្ម Firebase បានទេ។", "error");
+                            // *** START: បានកែសម្រួលនៅទីនេះ ***
+                            // ចាប់យក error ជាក់លាក់
+                            if (authError.code === 'auth/configuration-not-found') {
+                                showMessage(
+                                    "បញ្ហាការកំណត់រចនាសម្ព័ន្ធ", 
+                                    "សេវាកម្ម Authentication មិនទាន់បានបើកដំណើរការទេ។ សូមចូលទៅកាន់ Firebase Console របស់អ្នក ហើយបើក 'Anonymous' sign-in។", 
+                                    "error"
+                                );
+                            } else {
+                                // Error ផ្សេងទៀត
+                                showMessage("បញ្ហា Auth", `មិនអាចភ្ជាប់ទៅសេវាកម្ម Firebase បានទេ: ${authError.message}`, "error");
+                            }
+                            // *** END: កែសម្រួលនៅទីនេះ ***
                         }
                     }
                 });
@@ -475,6 +516,7 @@
         function changeUser() {
             selectedEmployee = null;
             localStorage.removeItem('selectedEmployee');
+            currentListenerDate = null; // បានបន្ថែម៖ Reset ថ្ងៃរបស់ Listener
             
             // បញ្ឈប់ការស្តាប់ទិន្នន័យ
             if (todayListenerUnsubscribe) {
@@ -495,18 +537,31 @@
          * ភ្ជាប់ onSnapshot listener សម្រាប់ទិន្នន័យវត្តមានថ្ងៃនេះ
          */
         function attachTodayListener() {
-            if (!userId || !selectedEmployee) return;
+            // បានកែសម្រួល៖ ឥឡូវយើងមិនត្រូវការ userId សម្រាប់ path ទេ
+            if (!appId || !selectedEmployee) return;
+
+            const todayDate = getTodayDateString(); 
+
+            // បានកែសម្រួល៖ ពិនិត្យមើលថា Listener មិនទាន់បានភ្ជាប់សម្រាប់ថ្ងៃនេះ
+            if (currentListenerDate === todayDate) {
+                console.log(`Listener សម្រាប់ថ្ងៃ ${todayDate} បានភ្ជាប់រួចហើយ។`);
+                return;
+            }
 
             // បញ្ឈប់ Listener ចាស់ (បើមាន)
             if (todayListenerUnsubscribe) {
                 todayListenerUnsubscribe();
             }
 
-            const todayDate = getTodayDateString();
-            const docPath = `artifacts/${appId}/users/${userId}/attendance/${todayDate}`;
+            // *** START: បានកែសម្រួលនៅទីនេះ ***
+            // បានប្តូរ Path ពី Private (users/${userId}) ទៅ Public (public/data)
+            // ដោយប្រើ Employee ID + Date ជា Key
+            const docPath = `artifacts/${appId}/public/data/attendance/${selectedEmployee.id}_${todayDate}`;
+            // *** END: កែសម្រួលនៅទីនេះ ***
             const docRef = doc(db, docPath);
 
             console.log(`កំពុងស្តាប់ទិន្នន័យពី៖ ${docPath}`);
+            currentListenerDate = todayDate; // បានបន្ថែម៖ កំណត់ថ្ងៃដែល Listener កំពុងស្តាប់
 
             todayListenerUnsubscribe = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -576,7 +631,11 @@
             checkInBtn.textContent = "កំពុងដំណើរការ...";
 
             const todayDate = getTodayDateString();
-            const docRef = doc(db, `artifacts/${appId}/users/${userId}/attendance/${todayDate}`);
+            // *** START: បានកែសម្រួលនៅទីនេះ ***
+            // បានប្តូរ Path ទៅ Public ឱ្យដូច attachTodayListener
+            const docPath = `artifacts/${appId}/public/data/attendance/${selectedEmployee.id}_${todayDate}`;
+            const docRef = doc(db, docPath);
+            // *** END: កែសម្រួលនៅទីនេះ ***
             const now = new Date().toISOString();
 
             const dataToSet = {
@@ -615,7 +674,11 @@
             checkOutBtn.textContent = "កំពុងដំណើរការ...";
 
             const todayDate = getTodayDateString();
-            const docRef = doc(db, `artifacts/${appId}/users/${userId}/attendance/${todayDate}`);
+            // *** START: បានកែសម្រួលនៅទីនេះ ***
+            // បានប្តូរ Path ទៅ Public ឱ្យដូច attachTodayListener
+            const docPath = `artifacts/${appId}/public/data/attendance/${selectedEmployee.id}_${todayDate}`;
+            const docRef = doc(db, docPath);
+            // *** END: កែសម្រួលនៅទីនេះ ***
             const now = new Date().toISOString();
 
             const dataToUpdate = {
@@ -655,3 +718,5 @@
     </script>
 </body>
 </html>
+
+
